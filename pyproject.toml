@@ -48,7 +48,7 @@ lint = [
 ]
 spellcheck = "codespell --toml pyproject.toml"
 fix = [
-    { cmd = "poetry run ruff format . --fix" },
+    { cmd = "poetry run ruff check --fix" },
     { cmd = "poetry run codespell --toml pyproject.toml -w" },
 ]
 version_bump_patch = "poetry version patch"

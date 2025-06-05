@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-import pytest
 from fastapi_bootstrap.main import app
 
 client = TestClient(app)

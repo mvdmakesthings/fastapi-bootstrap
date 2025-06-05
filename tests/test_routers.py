@@ -1,4 +1,3 @@
-import pytest
 from fastapi_bootstrap.api.v1.router import router as router_v1
 
 def test_v1_router_exists():

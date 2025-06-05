@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 import os
 
 from fastapi_bootstrap.api.v1.router import router as router_v1
