@@ -53,37 +53,52 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 
 ---
 
-A production-ready template for quickly bootstrapping scalable, reliable API services using [FastAPI](https://fastapi.tiangolo.com/), [SQLModel](https://sqlmodel.tiangolo.com/), [PostgreSQL](https://www.postgresql.org/), and Docker. Designed for rapid development, best practices, and easy deployment.
+A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and multi-environment infrastructure as code for AWS Fargate.
 
 ---
 
 ## Features
 
-- **FastAPI**: High-performance, easy-to-use Python web framework.
-- **SQLModel**: Modern ORM for type-safe database access.
-- **PostgreSQL**: Robust, production-grade relational database.
-- **Docker**: Containerized development and deployment.
-- **Poetry**: Dependency management and packaging.
-- **Automated Code Quality**: Linting, spellchecking, and formatting via GitHub Actions.
-- **Environment-based Configuration**: Easily switch between dev, test, and prod.
+- **Versioned API**: Built-in support for API versioning (v1, v2, etc.)
+- **Multi-Environment**: Separate configurations for dev, test, and production
+- **AWS Fargate Deployment**: Serverless container deployment with auto-scaling
+- **Blue/Green Deployment**: Zero-downtime deployments via AWS CodeDeploy
+- **Infrastructure as Code**: Complete Terraform configuration
+- **CI/CD Pipeline**: Automated GitHub Actions workflow
+- **Docker Support**: Development and production Docker configurations
+- **FastAPI**: High-performance, easy-to-use Python web framework
+- **Poetry**: Dependency management and packaging
 
 ---
 
 ## Project Structure
 
-```text
-fastapi-bootstrap/
-├── app/                # Main application code
-│   ├── api/            # API route definitions
-│   ├── core/           # Core settings, config, and utilities
-│   ├── db/             # Database models and session
-│   └── main.py         # FastAPI entrypoint
-├── tests/              # Unit and integration tests
-├── Dockerfile          # Docker image definition
-├── docker-compose.yml  # Multi-container orchestration
-├── pyproject.toml      # Project metadata and dependencies
-├── .env.example        # Example environment variables
-└── README.md           # Project documentation
+```
+├── .aws/                  # AWS deployment configuration files
+├── .github/workflows/     # GitHub Actions CI/CD configuration
+├── src/                   # Application source code
+│   └── fastapi_bootstrap/ # FastAPI application
+│       ├── api/           # API endpoints
+│       │   ├── v1/        # Version 1 API
+│       │   └── v2/        # Version 2 API
+│       └── main.py        # Application entrypoint
+├── terraform/             # Infrastructure as code
+│   ├── environments/      # Environment-specific configurations
+│   │   ├── dev/
+│   │   ├── test/
+│   │   └── prod/
+│   └── modules/           # Reusable Terraform modules
+│       ├── vpc/
+│       ├── ecs/
+│       ├── ecr/
+│       ├── iam/
+│       ├── security/
+│       └── codedeploy/
+├── docker-compose.yml     # Local development configuration
+├── docker-compose.test.yml # Testing configuration
+├── Dockerfile             # Production Docker image
+├── Dockerfile.test        # Test Docker image
+└── deploy.sh              # Deployment script
 ```
 
 ---
