@@ -114,6 +114,3 @@ output "api_v1_url" {
   value = "https://${module.ecs.alb_dns_name}/api/v1"
 }
 
-output "api_v2_url" {
-  value = "https://${module.ecs.alb_dns_name}/api/v2"
-}

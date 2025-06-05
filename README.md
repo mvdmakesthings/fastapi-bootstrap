@@ -64,7 +64,7 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/fastapi-bootstrap.git
+   git clone git@github.com:mvdmakesthings/fastapi-bootstrap.git
    cd fastapi-bootstrap
    ```
 
@@ -80,7 +80,6 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 
 4. Access the API at http://localhost:8000
    - API v1: http://localhost:8000/api/v1
-   - API v2: http://localhost:8000/api/v2
    - Documentation: http://localhost:8000/docs
 
 ## AWS Deployment
@@ -152,7 +151,12 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
    app.include_router(router_v2, prefix="/api/v2")
    ```
 
-4. Create new Terraform resources for v2 in the ECS and CodeDeploy modules
+4. Create new Terraform resources for v2 in the ECS and CodeDeploy modules and ensure new "output" config has been added to main.tf
+   ```
+   output "api_v2_url" {
+      value = "https://${module.ecs.alb_dns_name}/api/v2"
+   }
+   ```
 
 5. Create new task definition and appspec files for v2 in the .aws directory
 

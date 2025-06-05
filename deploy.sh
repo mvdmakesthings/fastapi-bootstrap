@@ -66,7 +66,6 @@ echo "ECR Repository URL: $ECR_REPOSITORY_URL"
 echo "ECS Cluster Name: $CLUSTER_NAME"
 echo "ALB DNS Name: $ALB_DNS_NAME"
 echo "API v1 URL: https://$ALB_DNS_NAME/api/v1"
-echo "API v2 URL: https://$ALB_DNS_NAME/api/v2"
 
 # Instructions for first-time setup
 echo ""
