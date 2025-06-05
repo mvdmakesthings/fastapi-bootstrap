@@ -114,3 +114,7 @@ media/
 *.swp
 *.swo
 *~
+
+# Tool Caching
+.poetry/
+.ruff_cache/

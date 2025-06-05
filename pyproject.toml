@@ -11,11 +11,56 @@ requires-python = ">=3.11,<4.0"
 dependencies = [
 ]
 
-
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+### -------- Development Dependencies --------
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.12"
+codespell = "^2.4.1"
 
+### -------- Automated Tasks ----------
+poethepoet = "^0.34.0"
+[tool.poetry.requires-plugins]
+poethepoet = { version = "~0.34.0", extras = ["poetry_plugin"]}
+
+[tool.poe.tasks]
+lint = "ruff check . --fix"
+spellcheck = "codespell --toml pyproject.toml"
+fix = [
+    { cmd = "poetry run ruff format . --fix" },
+    { cmd = "poetry run codespell --toml pyproject.toml -w" },
+]
+
+
+### -------- Development Tools --------
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
