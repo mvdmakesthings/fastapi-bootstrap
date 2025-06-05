@@ -8,7 +8,11 @@ license = "MIT"
 readme = "README.md"
 keywords = ["fastapi", "bootstrap", "clean architecture", "testing", "IaC", "infrastructure as code", "deployment"]
 dependencies = [
-    "python-dotenv (>=1.1.0,<2.0.0)"
+    "python-dotenv (>=1.1.0,<2.0.0)",
+    "fastapi (>=0.103.0,<0.104.0)",
+    "uvicorn (>=0.23.0,<0.24.0)",
+    "pydantic (>=2.0.0,<3.0.0)",
+    "pydantic-settings (>=2.0.0,<3.0.0)",
 ]
 
 [project.urls]
@@ -28,6 +32,9 @@ build-backend = "poetry.core.masonry.api"
 ruff = "^0.11.12"
 codespell = "^2.4.1"
 poethepoet = "^0.34.0"
+pytest = "^7.4.0"
+httpx = "^0.25.0"
+pytest-cov = "^4.1.0"
 
 [tool.poetry.requires-plugins]
 poethepoet = { version = "~0.34.0", extras = ["poetry_plugin"]}
@@ -47,6 +54,7 @@ fix = [
 version_bump_patch = "poetry version patch"
 version_bump_minor = "poetry version minor"
 version_bump_major = "poetry version major"
+unittest = "poetry run pytest -v"
 
 ### -------- Development Tools --------
 [tool.ruff]

@@ -1,86 +1,189 @@
-# FastAPI Bootstrap Template
+# FastAPI Bootstrap with AWS Fargate Multi-Environment Deployment
 
-A production-ready template for quickly bootstrapping scalable, reliable API services using [FastAPI](https://fastapi.tiangolo.com/), [SQLModel](https://sqlmodel.tiangolo.com/), [PostgreSQL](https://www.postgresql.org/), and Docker. Designed for rapid development, best practices, and easy deployment.
+A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and multi-environment infrastructure as code for AWS Fargate.
 
 ---
 
 ## Features
 
-- **FastAPI**: High-performance, easy-to-use Python web framework.
-- **SQLModel**: Modern ORM for type-safe database access.
-- **PostgreSQL**: Robust, production-grade relational database.
-- **Docker**: Containerized development and deployment.
-- **Poetry**: Dependency management and packaging.
-- **Automated Code Quality**: Linting, spellchecking, and formatting via GitHub Actions.
-- **Environment-based Configuration**: Easily switch between dev, test, and prod.
+- **Versioned API**: Built-in support for API versioning (v1, v2, etc.)
+- **Multi-Environment**: Separate configurations for dev, test, and production
+- **AWS Fargate Deployment**: Serverless container deployment with auto-scaling
+- **Blue/Green Deployment**: Zero-downtime deployments via AWS CodeDeploy
+- **Infrastructure as Code**: Complete Terraform configuration
+- **CI/CD Pipeline**: Automated GitHub Actions workflow
+- **Docker Support**: Development and production Docker configurations
+- **FastAPI**: High-performance, easy-to-use Python web framework
+- **Poetry**: Dependency management and packaging
 
 ---
 
 ## Project Structure
 
-```text
-fastapi-bootstrap/
-├── app/                # Main application code
-│   ├── api/            # API route definitions
-│   ├── core/           # Core settings, config, and utilities
-│   ├── db/             # Database models and session
-│   └── main.py         # FastAPI entrypoint
-├── tests/              # Unit and integration tests
-├── Dockerfile          # Docker image definition
-├── docker-compose.yml  # Multi-container orchestration
-├── pyproject.toml      # Project metadata and dependencies
-├── .env.example        # Example environment variables
-└── README.md           # Project documentation
+```
+├── .aws/                  # AWS deployment configuration files
+├── .github/workflows/     # GitHub Actions CI/CD configuration
+├── src/                   # Application source code
+│   └── fastapi_bootstrap/ # FastAPI application
+│       ├── api/           # API endpoints
+│       │   ├── v1/        # Version 1 API
+│       │   └── v2/        # Version 2 API
+│       └── main.py        # Application entrypoint
+├── terraform/             # Infrastructure as code
+│   ├── environments/      # Environment-specific configurations
+│   │   ├── dev/
+│   │   ├── test/
+│   │   └── prod/
+│   └── modules/           # Reusable Terraform modules
+│       ├── vpc/
+│       ├── ecs/
+│       ├── ecr/
+│       ├── iam/
+│       ├── security/
+│       └── codedeploy/
+├── docker-compose.yml     # Local development configuration
+├── docker-compose.test.yml # Testing configuration
+├── Dockerfile             # Production Docker image
+├── Dockerfile.test        # Test Docker image
+└── deploy.sh              # Deployment script
 ```
 
 ---
 
 ## Getting Started
 
-### 1. Requirements
+## Local Development
 
-- Python 3.11 or higher
-- [Poetry](https://python-poetry.org/) for dependency management
-- [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/) (for containerized setup)
-- PostgreSQL (local or via Docker)
+### Prerequisites
 
-### 2. Installation
+- Docker and Docker Compose
+- Python 3.11+
+- Poetry (for dependency management)
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/fastapi-bootstrap.git
-cd fastapi-bootstrap
+### Setup
 
-# Copy environment variables template and edit as needed
-cp .env.example .env
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/fastapi-bootstrap.git
+   cd fastapi-bootstrap
+   ```
 
-# Install dependencies
-poetry install
-```
+2. Install dependencies:
+   ```bash
+   poetry install
+   ```
 
-### 3. Running the Application
+3. Run the application locally:
+   ```bash
+   docker-compose up -d
+   ```
 
-#### Local Development (with Docker)
+4. Access the API at http://localhost:8000
+   - API v1: http://localhost:8000/api/v1
+   - API v2: http://localhost:8000/api/v2
+   - Documentation: http://localhost:8000/docs
 
-```bash
-# Start API and PostgreSQL using Docker Compose
-docker-compose up --build
-```
+## AWS Deployment
 
-- FastAPI will be available at `http://localhost:8000`
-- PostgreSQL will be available at `localhost:5432` (see `.env` for credentials)
+### Prerequisites
 
-#### Local Development (without Docker)
+- AWS CLI configured with appropriate permissions
+- Terraform CLI installed
+- Docker installed
 
-1. Ensure PostgreSQL is running and accessible.
-2. Update `.env` with your database credentials.
-3. Run the API:
+### Initial Deployment
 
-```bash
-poetry run uvicorn app.main:app --reload
-```
+1. Update your AWS account ID in the task definition and appspec files:
+   ```bash
+   find .aws -name 'task-definition-*.json' -exec sed -i '' 's/ACCOUNT_ID/YOUR_AWS_ACCOUNT_ID/g' {} \;
+   find .aws -name 'appspec-*.yaml' -exec sed -i '' 's/ACCOUNT_ID/YOUR_AWS_ACCOUNT_ID/g' {} \;
+   ```
 
----
+2. Create an S3 bucket for Terraform state (optional but recommended):
+   ```bash
+   aws s3 mb s3://your-terraform-state-bucket
+   aws dynamodb create-table --table-name terraform-locks \
+     --attribute-definitions AttributeName=LockID,AttributeType=S \
+     --key-schema AttributeName=LockID,KeyType=HASH \
+     --billing-mode PAY_PER_REQUEST
+   ```
+
+3. Update Terraform backend configuration in `terraform/main.tf`
+
+4. Deploy the infrastructure:
+   ```bash
+   ./deploy.sh --environment dev
+   ```
+
+5. Set up GitHub repository secrets for CI/CD:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_REGION`
+
+### Adding a New API Version
+
+1. Create a new version directory:
+   ```bash
+   mkdir -p src/fastapi_bootstrap/api/v2/endpoints
+   touch src/fastapi_bootstrap/api/v2/__init__.py
+   ```
+
+2. Create a router for the new version:
+   ```python
+   # src/fastapi_bootstrap/api/v2/router.py
+   from fastapi import APIRouter
+
+   router = APIRouter(tags=["v2"])
+
+   @router.get("/")
+   async def root_v2():
+       """
+       Root endpoint for API v2
+       """
+       return {"version": "v2", "message": "Welcome to API v2"}
+   ```
+
+3. Update the main application to include the new version:
+   ```python
+   # src/fastapi_bootstrap/main.py
+   from fastapi_bootstrap.api.v2.router import router as router_v2
+
+   # After existing routers
+   app.include_router(router_v2, prefix="/api/v2")
+   ```
+
+4. Create new Terraform resources for v2 in the ECS and CodeDeploy modules
+
+5. Create new task definition and appspec files for v2 in the .aws directory
+
+## Blue/Green Deployment
+
+The project is configured for blue/green deployments via AWS CodeDeploy. This means:
+
+1. New application versions are deployed to a new (green) environment
+2. Traffic is gradually shifted from the old (blue) to the new (green) environment
+3. The old environment is terminated after successful deployment
+
+This ensures zero-downtime deployments and easy rollbacks if issues are detected.
+
+## Multi-Environment Configuration
+
+The project supports multiple deployment environments:
+
+- **dev**: Development environment for testing new features
+- **test**: Testing/QA environment for pre-production validation
+- **prod**: Production environment for end users
+
+Each environment has its own configuration in `terraform/environments/`.
+
+## CI/CD Pipeline
+
+The GitHub Actions workflow in `.github/workflows/deploy.yml` automatically:
+
+1. Runs tests on pull requests
+2. Builds and pushes Docker images on merge to main/develop
+3. Deploys to the appropriate environment based on the branch
+4. Manages blue/green deployments for each API version
 
 ## Development Workflow
 
@@ -98,15 +201,19 @@ poetry run poe fix
 poetry run poe version_bump_patch  # For patch version (0.0.x)
 poetry run poe version_bump_minor  # For minor version (0.x.0)
 poetry run poe version_bump_major  # For major version (x.0.0)
-```
 
----
+# Run test
+poetry run poe unittest  # For unit tests (pytest)
+```
 
 ## Configuration
 
 - All configuration is managed via environment variables (see `.env.example`).
-- Sensitive values (e.g., database credentials, secret keys) should never be committed.
-- Use [Pydantic Settings](https://docs.pydantic.dev/latest/usage/pydantic_settings/) for structured config in `app/core/config.py`.
+- Environment-specific configurations are managed through Terraform variables in `terraform/environments/`.
+- AWS resources are defined as infrastructure as code in the Terraform modules.
+
+## License
+MIT
 
 ---
 
@@ -128,7 +235,7 @@ poetry run alembic upgrade head
 
 ```bash
 # Run all tests
-poetry run pytest
+poetry run poe unittest
 ```
 
 ---
@@ -136,7 +243,6 @@ poetry run pytest
 ## API Documentation
 
 - **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ---
 

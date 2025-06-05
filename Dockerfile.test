@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install Poetry
+RUN pip install poetry==1.6.1
+
+# Copy poetry configuration files
+COPY pyproject.toml poetry.lock* ./
+
+# Configure poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
+
+# Install dependencies including dev dependencies
+RUN poetry install --no-interaction --no-ansi
+
+# Copy application code
+COPY ./src /app/src
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Run tests by default
+CMD ["poetry run poe unittest", "-v"]

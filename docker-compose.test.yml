@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - ENVIRONMENT=test
+    command: ["poetry run poe unittest", "-v"]
