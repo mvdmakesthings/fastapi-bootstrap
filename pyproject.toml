@@ -1,15 +1,23 @@
 [project]
-name = "fastapi-bootstrap"
-version = "0.1.0"
-description = "A bootstrapped fastapi project, prioritizing clean architecture, testing, and easy deployment."
-authors = [
-    {name = "Michael VanDyke",email = "me@mjvandyke.com"}
-]
-license = {text = "MIT"}
-readme = "README.md"
+name = "fastapi_bootstrap"
 requires-python = ">=3.11,<4.0"
+dynamic = [ "version" ]
+description = "A bootstrapped fastapi project, prioritizing clean architecture, testing, and easy deployment."
+authors = [{name = "Michael VanDyke", email = "me@mjvandyke.com"}]
+license = "MIT"
+readme = "README.md"
+keywords = ["fastapi", "bootstrap", "clean architecture", "testing", "IaC", "infrastructure as code", "deployment"]
 dependencies = [
+    "python-dotenv (>=1.1.0,<2.0.0)"
 ]
+
+[project.urls]
+homepage = "https://github.com/mvdmakesthings/fastapi-bootstrap"
+repository = "https://github.com/mvdmakesthings/fastapi-bootstrap"
+
+[tool.poetry]
+version = "0.1.0"
+packages = [{ include = "fastapi_bootstrap", from = "src" }]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -19,20 +27,26 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.12"
 codespell = "^2.4.1"
-
-### -------- Automated Tasks ----------
 poethepoet = "^0.34.0"
+
 [tool.poetry.requires-plugins]
 poethepoet = { version = "~0.34.0", extras = ["poetry_plugin"]}
 
+### -------- Automated Tasks ----------
 [tool.poe.tasks]
-lint = "ruff check . --fix"
+lint = [
+    { cmd = "ruff check ." },
+    { cmd = "ruff check --select I ." },
+    { cmd = "poetry check"}
+]
 spellcheck = "codespell --toml pyproject.toml"
 fix = [
     { cmd = "poetry run ruff format . --fix" },
     { cmd = "poetry run codespell --toml pyproject.toml -w" },
 ]
-
+version_bump_patch = "poetry version patch"
+version_bump_minor = "poetry version minor"
+version_bump_major = "poetry version major"
 
 ### -------- Development Tools --------
 [tool.ruff]
