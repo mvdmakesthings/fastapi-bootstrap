@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 router = APIRouter(tags=["v1"])
 
+
 @router.get("/")
 async def root_v1():
     """
