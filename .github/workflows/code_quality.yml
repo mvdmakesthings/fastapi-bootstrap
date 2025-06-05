@@ -22,3 +22,6 @@ jobs:
     - name: Check Common Mispellings
       run: |
         poetry run poe spellcheck
+    - name: Run unit tests
+      run: |
+        poetry run poe unittest

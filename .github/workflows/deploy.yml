@@ -1,0 +1,111 @@
+name: Deploy FastAPI to AWS Fargate
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+jobs:
+  test:
+    name: Test Application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tests
+        run: docker-compose -f docker-compose.test.yml up --exit-code-from app-test
+
+  build-and-push:
+    name: Build and Push Image
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: fastapi-bootstrap
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Set deployment environment
+        id: env
+        run: |
+          if [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == 'refs/heads/develop' ]]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          else
+            echo "environment=test" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-api-v1:
+    name: Deploy API v1
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set deployment environment
+        id: env
+        run: |
+          if [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == 'refs/heads/develop' ]]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          else
+            echo "environment=test" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fill in the new task definition for v1
+        id: task-def-v1
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: .aws/task-definition-v1-${{ steps.env.outputs.environment }}.json
+          container-name: fastapi-bootstrap-v1
+          image: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def-v1.outputs.task-definition }}
+          service: fastapi-bootstrap-v1-${{ steps.env.outputs.environment }}
+          cluster: fastapi-bootstrap-${{ steps.env.outputs.environment }}
+          wait-for-service-stability: true
+          codedeploy-appspec: .aws/appspec-v1-${{ steps.env.outputs.environment }}.yaml
