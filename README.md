@@ -11,6 +11,7 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 - **AWS Fargate Deployment**: Serverless container deployment with auto-scaling
 - **Blue/Green Deployment**: Zero-downtime deployments via AWS CodeDeploy
 - **Infrastructure as Code**: Complete Terraform configuration
+- **Detailed Infrastructure Documentation**: Comprehensive overview of the AWS architecture in [docs/infrastructure.md](docs/infrastructure.md)
 - **CI/CD Pipeline**: Automated GitHub Actions workflow
 - **Docker Support**: Development and production Docker configurations
 - **FastAPI**: High-performance, easy-to-use Python web framework
@@ -23,6 +24,8 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 ```
 ├── .aws/                  # AWS deployment configuration files
 ├── .github/workflows/     # GitHub Actions CI/CD configuration
+├── docs/                  # Documentation
+│   └── infrastructure.md  # Detailed infrastructure documentation
 ├── src/                   # Application source code
 │   └── fastapi_bootstrap/ # FastAPI application
 │       ├── api/           # API endpoints
@@ -92,7 +95,9 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 
 ### Initial Deployment
 
-1. Update your AWS account ID in the task definition and appspec files:
+1. Review the infrastructure documentation in [docs/infrastructure.md](docs/infrastructure.md) to understand the AWS architecture.
+
+2. Update your AWS account ID in the task definition and appspec files:
    ```bash
    find .aws -name 'task-definition-*.json' -exec sed -i '' 's/ACCOUNT_ID/YOUR_AWS_ACCOUNT_ID/g' {} \;
    find .aws -name 'appspec-*.yaml' -exec sed -i '' 's/ACCOUNT_ID/YOUR_AWS_ACCOUNT_ID/g' {} \;
@@ -170,6 +175,8 @@ The project is configured for blue/green deployments via AWS CodeDeploy. This me
 
 This ensures zero-downtime deployments and easy rollbacks if issues are detected.
 
+For a detailed architecture diagram and explanation of the deployment process, see the [infrastructure documentation](docs/infrastructure.md#deployment-flow).
+
 ## Multi-Environment Configuration
 
 The project supports multiple deployment environments:
@@ -179,6 +186,8 @@ The project supports multiple deployment environments:
 - **prod**: Production environment for end users
 
 Each environment has its own configuration in `terraform/environments/`.
+
+For detailed information about environment-specific configurations and resource allocation, see the [infrastructure documentation](docs/infrastructure.md#environment-specific-configuration).
 
 ## CI/CD Pipeline
 
@@ -277,6 +286,13 @@ Automated workflows ensure code quality and reliability:
 - [Docker](https://www.docker.com/)
 - [PostgreSQL](https://www.postgresql.org/)
 - [Poetry](https://python-poetry.org/)
+- [AWS Fargate](https://aws.amazon.com/fargate/)
+- [Terraform](https://www.terraform.io/)
+- [AWS CodeDeploy](https://aws.amazon.com/codedeploy/)
+
+## Documentation
+
+- [Infrastructure Documentation](docs/infrastructure.md): Detailed overview of the AWS infrastructure architecture, deployment flow, and configuration
 
 ---
 
