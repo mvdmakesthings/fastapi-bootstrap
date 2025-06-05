@@ -73,6 +73,11 @@ variable "container_port" {
   default     = 8000
 }
 
+variable "kms_key_id" {
+  description = "The KMS key ID for encryption"
+  type        = string
+}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-${var.environment}"
@@ -97,6 +102,7 @@ resource "aws_cloudwatch_log_group" "main" {
     Name        = "${var.app_name}-${var.environment}"
     Environment = var.environment
   }
+  kms_key_id = "${var.kms_key_id}"
 }
 
 # ALB
@@ -108,6 +114,8 @@ resource "aws_lb" "main" {
   subnets            = var.public_subnets
 
   enable_deletion_protection = var.environment == "prod" ? true : false
+
+  drop_invalid_header_fields = true
 
   tags = {
     Name        = "${var.app_name}-${var.environment}"

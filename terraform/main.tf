@@ -40,6 +40,11 @@ variable "app_name" {
   default     = "fastapi-bootstrap"
 }
 
+variable "kms_key_id" {
+  description = "The KMS key ID for CloudWatch Log Group encryption"
+  type        = string
+}
+
 # Modules
 module "vpc" {
   source = "../modules/vpc"
@@ -82,6 +87,7 @@ module "ecs" {
   ecs_task_role           = module.iam.ecs_task_role_arn
   security_group_id       = module.security.ecs_security_group_id
   ecr_repository_url      = module.ecr.repository_url
+  kms_key_id             = var.kms_key_id
 }
 
 module "codedeploy" {
