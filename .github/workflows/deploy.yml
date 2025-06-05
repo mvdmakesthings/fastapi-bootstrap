@@ -105,6 +105,12 @@ jobs:
           container-name: fastapi-bootstrap-v1
           image: ${{ needs.build-and-push.outputs.image }}
 
+      - name: Update task definition with deployment ID
+        run: |
+          DEPLOYMENT_ID=$(date +%s)
+          sed -i.bak "s/DEPLOYMENT_ID_PLACEHOLDER/$DEPLOYMENT_ID/g" ${{ steps.task-def-v1.outputs.task-definition }}
+          echo "Using deployment ID: $DEPLOYMENT_ID"
+
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:

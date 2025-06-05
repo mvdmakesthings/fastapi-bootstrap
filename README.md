@@ -11,12 +11,15 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 - **AWS Fargate Deployment**: Serverless container deployment with auto-scaling
 - **Blue/Green Deployment**: Zero-downtime deployments via AWS CodeDeploy
 - **Infrastructure as Code**: Complete Terraform configuration
-- **Detailed Infrastructure Documentation**: Comprehensive overview of the AWS architecture in [docs/infrastructure.md](docs/infrastructure.md)
 - **CI/CD Pipeline**: Automated GitHub Actions workflow
 - **Docker Support**: Development and production Docker configurations
 - **FastAPI**: High-performance, easy-to-use Python web framework
 - **Poetry**: Dependency management and packaging
 
+---
+## Documentation
+- **Detailed Infrastructure Documentation**: Comprehensive overview of the AWS architecture in [docs/infrastructure.md](docs/infrastructure.md)
+- **Blue/Green Deployment Documentation**: Detailed explanation of the deployment strategy in [docs/blue-green-deployment.md](docs/blue-green-deployment.md)
 ---
 
 ## Project Structure
@@ -225,7 +228,7 @@ The project is configured for blue/green deployments via AWS CodeDeploy. This me
 
 This ensures zero-downtime deployments and easy rollbacks if issues are detected.
 
-For a detailed architecture diagram and explanation of the deployment process, see the [infrastructure documentation](docs/infrastructure.md#deployment-flow).
+For a detailed architecture diagram and explanation of the deployment process, see the [infrastructure documentation](docs/infrastructure.md#deployment-flow) and the [blue-green deployment documentation](docs/blue-green-deployment.md).
 
 ## Multi-Environment Configuration
 
@@ -343,6 +346,7 @@ Automated workflows ensure code quality and reliability:
 ## Documentation
 
 - [Infrastructure Documentation](docs/infrastructure.md): Detailed overview of the AWS infrastructure architecture, deployment flow, and configuration
+- [Blue/Green Deployment Documentation](docs/blue-green-deployment.md): Comprehensive guide to the blue/green deployment strategy used in this project
 
 ---
 
