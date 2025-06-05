@@ -53,6 +53,41 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 
 ---
 
+A production-ready template for quickly bootstrapping scalable, reliable API services using [FastAPI](https://fastapi.tiangolo.com/), [SQLModel](https://sqlmodel.tiangolo.com/), [PostgreSQL](https://www.postgresql.org/), and Docker. Designed for rapid development, best practices, and easy deployment.
+
+---
+
+## Features
+
+- **FastAPI**: High-performance, easy-to-use Python web framework.
+- **SQLModel**: Modern ORM for type-safe database access.
+- **PostgreSQL**: Robust, production-grade relational database.
+- **Docker**: Containerized development and deployment.
+- **Poetry**: Dependency management and packaging.
+- **Automated Code Quality**: Linting, spellchecking, and formatting via GitHub Actions.
+- **Environment-based Configuration**: Easily switch between dev, test, and prod.
+
+---
+
+## Project Structure
+
+```text
+fastapi-bootstrap/
+├── app/                # Main application code
+│   ├── api/            # API route definitions
+│   ├── core/           # Core settings, config, and utilities
+│   ├── db/             # Database models and session
+│   └── main.py         # FastAPI entrypoint
+├── tests/              # Unit and integration tests
+├── Dockerfile          # Docker image definition
+├── docker-compose.yml  # Multi-container orchestration
+├── pyproject.toml      # Project metadata and dependencies
+├── .env.example        # Example environment variables
+└── README.md           # Project documentation
+```
+
+---
+
 ## Getting Started
 
 ## Local Development
