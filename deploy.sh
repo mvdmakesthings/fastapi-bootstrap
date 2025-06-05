@@ -44,7 +44,7 @@ echo "Deploying FastAPI Bootstrap to $ENVIRONMENT environment"
 
 # Initialize Terraform
 echo "Initializing Terraform..."
-cd terraform/environments/$ENVIRONMENT
+cd "terraform/environments/$ENVIRONMENT"
 terraform init
 
 # Plan Terraform changes

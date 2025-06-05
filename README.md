@@ -155,7 +155,7 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 
 2. Create an S3 bucket for Terraform state (optional but recommended):
    ```bash
-   aws s3 mb s3://your-terraform-state-bucket
+   aws s3 mb s3://YOUR-ORGANIZATION-NAME-terraform-state-$(aws sts get-caller-identity --query Account --output text)
    aws dynamodb create-table --table-name terraform-locks \
      --attribute-definitions AttributeName=LockID,AttributeType=S \
      --key-schema AttributeName=LockID,KeyType=HASH \
