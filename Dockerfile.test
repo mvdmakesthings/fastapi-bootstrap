@@ -21,6 +21,10 @@ COPY ./src /app/src
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
+
+# Expose port
+EXPOSE 8000
 
 # Run tests by default
-CMD ["poetry run poe unittest", "-v"]
+CMD ["poetry", "run", "poe", "unittest", "-v"]
