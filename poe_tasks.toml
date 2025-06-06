@@ -1,0 +1,57 @@
+# Tasks for Poethepoet to handle common development operations
+
+[tool.poe.tasks]
+# Code quality tasks
+lint = [
+    { cmd = "ruff check ." },
+    { cmd = "ruff check --select I ." },
+    { cmd = "poetry check"}
+]
+spellcheck = "codespell --toml pyproject.toml"
+fix = [
+    { cmd = "ruff check --fix" },
+    { cmd = "ruff check --select I --fix" },
+    { cmd = "ruff format" },
+    { cmd = "isort . --profile black" },
+    { cmd = "codespell --toml pyproject.toml -w" },
+]
+version_bump_patch = "poetry version patch"
+version_bump_minor = "poetry version minor"
+version_bump_major = "poetry version major"
+unittest = "pytest -v"
+
+# Development tasks
+dev = "fastapi-bootstrap dev start"
+stop = "fastapi-bootstrap dev stop"
+logs = "fastapi-bootstrap dev logs"
+
+# Infrastructure tasks
+init = "fastapi-bootstrap init project"
+init_db = "fastapi-bootstrap init database"
+bootstrap = "fastapi-bootstrap infra bootstrap"
+deploy_infra = "fastapi-bootstrap infra deploy"
+destroy_infra = "fastapi-bootstrap infra destroy"
+infra_status = "fastapi-bootstrap infra status"
+
+# Deployment tasks
+deploy_app = "fastapi-bootstrap deploy app"
+deploy_status = "fastapi-bootstrap deploy status"
+
+# Combined tasks
+setup = [
+    { cmd = "poetry install" },
+    { ref = "init" },
+    { ref = "bootstrap" },
+    { ref = "deploy_infra" }
+]
+
+update = [
+    { cmd = "poetry update" },
+    { ref = "fix" },
+    { ref = "lint" }
+]
+
+test = [
+    { ref = "lint" },
+    { ref = "unittest" }
+]

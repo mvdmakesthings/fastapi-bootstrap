@@ -95,21 +95,13 @@ See [Deployment Guide](docs/deployment-guide.md) for detailed instructions.
 │   │   ├── Dockerfile.dev   # Development Docker configuration
 │   │   ├── Dockerfile.test  # Testing Docker configuration
 │   │   └── docker-compose.* # Docker Compose configurations
-│   ├── localstack/          # LocalStack configurations for AWS emulation
-│   ├── scripts/             # Deployment and utility scripts
-│   └── terraform/           # Infrastructure as code
-│       ├── environments/    # Environment-specific configurations
-│       └── modules/         # Reusable Terraform modules
+│   ├── localstack/          # LocalStack configurations for AWS
 ├── src/                     # Application source code
 │   └── fastapi_bootstrap/   # FastAPI application
 │       ├── api/             # API endpoints by version
 │       │   ├── v1/          # Version 1 API
 │       │   └── v2/          # Version 2 API (example)
 │       └── utils/           # Utility functions and middleware
-│   │   ├── dev/
-│   │   ├── test/
-│   │   └── prod/
-│   └── modules/           # Reusable Terraform modules
 ├── tests/                 # Test suite
 ```
 
@@ -142,18 +134,3 @@ poetry run alembic revision --autogenerate -m "create users table"
 poetry run alembic upgrade head
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (`poetry run poe unittest`)
-5. Commit your changes (`git commit -m 'Add some amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-## License
-
-MIT
-
-## Contributors

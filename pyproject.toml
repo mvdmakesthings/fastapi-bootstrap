@@ -23,6 +23,15 @@ dependencies = [
     "opentelemetry-instrumentation-botocore",
     "opentelemetry-sdk-extension-aws",
     "opentelemetry-exporter-otlp",
+    "click",
+    "PyYAML",
+    "rich",
+    "aws-cdk-lib",
+    "constructs",
+    "cryptography",
+    "docker",
+    "requests",
+    "tabulate",
 ]
 
 [project.optional-dependencies]
@@ -59,6 +68,10 @@ pytest-cov = "*"
 [tool.poetry.requires-plugins]
 poethepoet = { version = "~0.34.0", extras = ["poetry_plugin"]}
 
+### -------- CLI Entry Point --------
+[project.scripts]
+fastapi-bootstrap = "fastapi_bootstrap.cli.main:cli"
+
 ### -------- Automated Tasks ----------
 [tool.poe.tasks]
 lint = [
@@ -78,6 +91,19 @@ version_bump_patch = "poetry version patch"
 version_bump_minor = "poetry version minor"
 version_bump_major = "poetry version major"
 unittest = "poetry run pytest -v"
+
+# Development tasks
+dev = "python -m fastapi_bootstrap.cli dev start"
+dev_stop = "python -m fastapi_bootstrap.cli dev stop"
+
+# Infrastructure tasks
+init = "python -m fastapi_bootstrap.cli init project"
+infra_bootstrap = "python -m fastapi_bootstrap.cli infra bootstrap"
+infra_deploy = "python -m fastapi_bootstrap.cli infra deploy"
+infra_destroy = "python -m fastapi_bootstrap.cli infra destroy"
+
+# Deployment tasks
+deploy = "python -m fastapi_bootstrap.cli deploy app"
 
 ### -------- Development Tools --------
 [tool.ruff]
