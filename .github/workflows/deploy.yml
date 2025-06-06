@@ -160,6 +160,8 @@ jobs:
     needs: [deploy-api-v1]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
