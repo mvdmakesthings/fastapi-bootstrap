@@ -128,9 +128,10 @@ async def root():
     Root endpoint
     """
     return {
-        "message": "Welcome to FastAPI Bootstrap",
-        "docs_url": "/docs",
+        "description": app.description,
+        "docs_url": app.docs_url,
         "api_v1_url": "/api/v1",
+        "version": app.version,
     }
 
 
