@@ -11,6 +11,17 @@ on:
     paths-ignore:
       - '**.md'
       - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
 
 jobs:
   test:
@@ -23,11 +34,32 @@ jobs:
       - name: Run tests
         run: docker-compose -f docker-compose.test.yml up --exit-code-from app-test
 
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
   build-and-push:
     name: Build and Push Image
-    needs: test
+    needs: [test, security-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     outputs:
       image: ${{ steps.build-push.outputs.image }}
     steps:
@@ -35,7 +67,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -61,7 +93,9 @@ jobs:
       - name: Set deployment environment
         id: env
         run: |
-          if [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
             echo "environment=prod" >> $GITHUB_OUTPUT
           elif [[ $GITHUB_REF == 'refs/heads/develop' ]]; then
             echo "environment=dev" >> $GITHUB_OUTPUT
@@ -73,13 +107,13 @@ jobs:
     name: Deploy API v1
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -88,7 +122,9 @@ jobs:
       - name: Set deployment environment
         id: env
         run: |
-          if [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
             echo "environment=prod" >> $GITHUB_OUTPUT
           elif [[ $GITHUB_REF == 'refs/heads/develop' ]]; then
             echo "environment=dev" >> $GITHUB_OUTPUT
@@ -104,6 +140,12 @@ jobs:
           container-name: fastapi-bootstrap-v1
           image: ${{ needs.build-and-push.outputs.image }}
 
+      - name: Update task definition with deployment ID
+        run: |
+          DEPLOYMENT_ID=$(date +%s)
+          sed -i.bak "s/DEPLOYMENT_ID_PLACEHOLDER/$DEPLOYMENT_ID/g" ${{ steps.task-def-v1.outputs.task-definition }}
+          echo "Using deployment ID: $DEPLOYMENT_ID"
+
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
@@ -112,3 +154,65 @@ jobs:
           cluster: fastapi-bootstrap-${{ steps.env.outputs.environment }}
           wait-for-service-stability: true
           codedeploy-appspec: .aws/appspec-v1-${{ steps.env.outputs.environment }}.yaml
+
+  post-deployment-tests:
+    name: Post-Deployment Tests
+    needs: [deploy-api-v1]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set deployment environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == 'refs/heads/develop' ]]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          else
+            echo "environment=test" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get API URL
+        id: get-url
+        run: |
+          API_URL=$(aws cloudformation describe-stacks --stack-name fastapi-bootstrap-${{ steps.env.outputs.environment }} --query "Stacks[0].Outputs[?OutputKey=='api_v1_url'].OutputValue" --output text)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+      - name: Run API tests
+        run: |
+          # Install test dependencies
+          pip install pytest requests
+          
+          # Create a simple test script
+          cat > test_deployed_api.py << 'EOF'
+          import requests
+          import os
+          import pytest
+          
+          API_URL = os.environ.get('API_URL')
+          
+          def test_api_health():
+              response = requests.get(f"{API_URL}/health")
+              assert response.status_code == 200
+              assert response.json()["status"] == "healthy"
+          
+          def test_api_root():
+              response = requests.get(API_URL)
+              assert response.status_code == 200
+              assert "message" in response.json()
+          EOF
+          
+          # Run the tests
+          API_URL=${{ steps.get-url.outputs.api_url }} pytest test_deployed_api.py -v

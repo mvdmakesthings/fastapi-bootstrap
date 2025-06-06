@@ -46,12 +46,18 @@ resource "aws_iam_policy" "secrets_access" {
     Statement = [
       {
         Action = [
-          "secretsmanager:GetSecretValue",
+          "secretsmanager:GetSecretValue"
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:secretsmanager:*:*:secret:${var.app_name}-${var.environment}-*"
+      },
+      {
+        Action = [
           "ssm:GetParameters",
           "ssm:GetParameter"
         ]
         Effect   = "Allow"
-        Resource = "*"
+        Resource = "arn:aws:ssm:*:*:parameter/${var.app_name}/${var.environment}/*"
       }
     ]
   })
@@ -85,6 +91,34 @@ resource "aws_iam_role" "ecs_task_role" {
   }
 }
 
+# Add permissions for X-Ray tracing
+resource "aws_iam_policy" "xray_access" {
+  name        = "${var.app_name}-${var.environment}-xray-access"
+  description = "Allow sending traces to X-Ray"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords",
+          "xray:GetSamplingRules",
+          "xray:GetSamplingTargets",
+          "xray:GetSamplingStatisticSummaries"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "xray_access" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = aws_iam_policy.xray_access.arn
+}
+
 # Add permissions for CloudWatch Logs
 resource "aws_iam_policy" "cloudwatch_logs" {
   name        = "${var.app_name}-${var.environment}-cloudwatch-logs"
@@ -100,7 +134,10 @@ resource "aws_iam_policy" "cloudwatch_logs" {
           "logs:PutLogEvents"
         ]
         Effect   = "Allow"
-        Resource = "*"
+        Resource = [
+          "arn:aws:logs:*:*:log-group:/ecs/${var.app_name}-${var.environment}*",
+          "arn:aws:logs:*:*:log-group:/ecs/${var.app_name}-${var.environment}*:log-stream:*"
+        ]
       }
     ]
   })

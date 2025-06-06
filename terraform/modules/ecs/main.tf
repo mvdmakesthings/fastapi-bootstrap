@@ -73,6 +73,47 @@ variable "container_port" {
   default     = 8000
 }
 
+variable "use_fargate_spot" {
+  description = "Whether to use Fargate Spot for cost savings (recommended for non-production)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_scheduled_scaling" {
+  description = "Whether to enable scheduled scaling to scale down during non-business hours"
+  type        = bool
+  default     = false
+}
+
+variable "business_hours_start" {
+  description = "Start time for business hours in UTC (format: HH:MM)"
+  type        = string
+  default     = "13:00"  # 9:00 AM EST/EDT
+}
+
+variable "business_hours_end" {
+  description = "End time for business hours in UTC (format: HH:MM)"
+  type        = string
+  default     = "01:00"  # 9:00 PM EST/EDT
+}
+
+variable "kms_key_id" {
+  description = "The KMS key ID for encryption"
+  type        = string
+}
+
+variable "certificate_arn" {
+  description = "The ARN of the SSL certificate for HTTPS"
+  type        = string
+  default     = ""
+}
+
+variable "web_acl_arn" {
+  description = "The ARN of the WAF Web ACL"
+  type        = string
+  default     = null
+}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-${var.environment}"
@@ -88,6 +129,18 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
+# Configure capacity providers for the cluster
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name = aws_ecs_cluster.main.name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = var.use_fargate_spot && var.environment != "prod" ? "FARGATE_SPOT" : "FARGATE"
+    weight            = 100
+  }
+}
+
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "main" {
   name              = "/ecs/${var.app_name}-${var.environment}"
@@ -97,6 +150,7 @@ resource "aws_cloudwatch_log_group" "main" {
     Name        = "${var.app_name}-${var.environment}"
     Environment = var.environment
   }
+  kms_key_id = "${var.kms_key_id}"
 }
 
 # ALB
@@ -109,10 +163,20 @@ resource "aws_lb" "main" {
 
   enable_deletion_protection = var.environment == "prod" ? true : false
 
+  drop_invalid_header_fields = true
+
   tags = {
     Name        = "${var.app_name}-${var.environment}"
     Environment = var.environment
   }
+}
+
+# Associate WAF Web ACL with ALB if provided
+resource "aws_wafv2_web_acl_association" "main" {
+  count = var.web_acl_arn != null ? 1 : 0
+
+  resource_arn = aws_lb.main.arn
+  web_acl_arn  = var.web_acl_arn
 }
 
 # ALB Target Groups for Blue/Green deployment - API v1
@@ -166,57 +230,6 @@ resource "aws_lb_target_group" "green_v1" {
   }
 }
 
-# ALB Target Groups for Blue/Green deployment - API v2
-resource "aws_lb_target_group" "blue_v2" {
-  name     = "${var.app_name}-blue-v2-${var.environment}"
-  port     = var.container_port
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    enabled             = true
-    interval            = 30
-    path                = "/health"
-    port                = "traffic-port"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
-    protocol            = "HTTP"
-    matcher             = "200"
-  }
-
-  tags = {
-    Name        = "${var.app_name}-blue-v2-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-resource "aws_lb_target_group" "green_v2" {
-  name     = "${var.app_name}-green-v2-${var.environment}"
-  port     = var.container_port
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    enabled             = true
-    interval            = 30
-    path                = "/health"
-    port                = "traffic-port"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
-    protocol            = "HTTP"
-    matcher             = "200"
-  }
-
-  tags = {
-    Name        = "${var.app_name}-green-v2-${var.environment}"
-    Environment = var.environment
-  }
-}
-
 # ALB Listener
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
@@ -239,7 +252,7 @@ resource "aws_lb_listener" "https" {
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  # certificate_arn   = var.certificate_arn # You would need to provide a certificate ARN
+  certificate_arn   = var.certificate_arn
 
   default_action {
     type = "fixed-response"
@@ -269,22 +282,6 @@ resource "aws_lb_listener_rule" "api_v1" {
   }
 }
 
-# API v2 Listener Rule
-resource "aws_lb_listener_rule" "api_v2" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 20
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.blue_v2.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/api/v2*"]
-    }
-  }
-}
 
 # ECS Task Definition - API v1
 resource "aws_ecs_task_definition" "api_v1" {
@@ -296,90 +293,63 @@ resource "aws_ecs_task_definition" "api_v1" {
   execution_role_arn       = var.ecs_task_execution_role
   task_role_arn            = var.ecs_task_role
 
-  container_definitions = jsonencode([{
-    name      = "${var.app_name}-v1"
-    image     = "${var.ecr_repository_url}:latest"
-    essential = true
+  container_definitions = jsonencode([
+    {
+      name      = "${var.app_name}-v1"
+      image     = "${var.ecr_repository_url}:latest"
+      essential = true
 
-    portMappings = [{
-      containerPort = var.container_port
-      hostPort      = var.container_port
-      protocol      = "tcp"
-    }]
+      portMappings = [{
+        containerPort = var.container_port
+        hostPort      = var.container_port
+        protocol      = "tcp"
+      }]
 
-    environment = [
-      { name = "ENVIRONMENT", value = var.environment }
-    ]
+      environment = [
+        { name = "ENVIRONMENT", value = var.environment }
+      ]
 
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.main.name
-        "awslogs-region"        = "us-east-1"
-        "awslogs-stream-prefix" = "ecs-v1"
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.main.name
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "ecs-v1"
+        }
+      }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    },
+    {
+      name      = "xray-daemon"
+      image     = "amazon/aws-xray-daemon:latest"
+      essential = true
+      
+      portMappings = [{
+        containerPort = 2000
+        hostPort      = 2000
+        protocol      = "udp"
+      }]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.main.name
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "xray"
+        }
       }
     }
-
-    healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health || exit 1"]
-      interval    = 30
-      timeout     = 5
-      retries     = 3
-      startPeriod = 60
-    }
-  }])
+  ])
 
   tags = {
     Name        = "${var.app_name}-v1-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-# ECS Task Definition - API v2
-resource "aws_ecs_task_definition" "api_v2" {
-  family                   = "${var.app_name}-v2-${var.environment}"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = var.task_cpu
-  memory                   = var.task_memory
-  execution_role_arn       = var.ecs_task_execution_role
-  task_role_arn            = var.ecs_task_role
-
-  container_definitions = jsonencode([{
-    name      = "${var.app_name}-v2"
-    image     = "${var.ecr_repository_url}:latest"
-    essential = true
-
-    portMappings = [{
-      containerPort = var.container_port
-      hostPort      = var.container_port
-      protocol      = "tcp"
-    }]
-
-    environment = [
-      { name = "ENVIRONMENT", value = var.environment }
-    ]
-
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.main.name
-        "awslogs-region"        = "us-east-1"
-        "awslogs-stream-prefix" = "ecs-v2"
-      }
-    }
-
-    healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health || exit 1"]
-      interval    = 30
-      timeout     = 5
-      retries     = 3
-      startPeriod = 60
-    }
-  }])
-
-  tags = {
-    Name        = "${var.app_name}-v2-${var.environment}"
     Environment = var.environment
   }
 }
@@ -390,7 +360,27 @@ resource "aws_ecs_service" "api_v1" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.api_v1.arn
   desired_count   = var.min_capacity
-  launch_type     = "FARGATE"
+  
+  # Use Fargate Spot for non-production environments when enabled
+  dynamic "capacity_provider_strategy" {
+    for_each = var.use_fargate_spot && var.environment != "prod" ? [1] : []
+    content {
+      capacity_provider = "FARGATE_SPOT"
+      weight            = 100
+    }
+  }
+  
+  # Use regular Fargate for production or when Spot is not enabled
+  dynamic "capacity_provider_strategy" {
+    for_each = !var.use_fargate_spot || var.environment == "prod" ? [1] : []
+    content {
+      capacity_provider = "FARGATE"
+      weight            = 100
+    }
+  }
+  
+  # Only set launch_type when not using capacity_provider_strategy
+  launch_type     = var.use_fargate_spot ? null : "FARGATE"
 
   network_configuration {
     subnets          = var.private_subnets
@@ -421,42 +411,6 @@ resource "aws_ecs_service" "api_v1" {
   }
 }
 
-# ECS Service - API v2
-resource "aws_ecs_service" "api_v2" {
-  name            = "${var.app_name}-v2-${var.environment}"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.api_v2.arn
-  desired_count   = var.min_capacity
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = var.private_subnets
-    security_groups  = [var.security_group_id]
-    assign_public_ip = false
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.blue_v2.arn
-    container_name   = "${var.app_name}-v2"
-    container_port   = var.container_port
-  }
-
-  deployment_controller {
-    type = "CODE_DEPLOY"
-  }
-
-  tags = {
-    Name        = "${var.app_name}-v2-${var.environment}"
-    Environment = var.environment
-  }
-
-  lifecycle {
-    ignore_changes = [
-      task_definition,
-      load_balancer
-    ]
-  }
-}
 
 # Auto Scaling - API v1
 resource "aws_appautoscaling_target" "api_v1" {
@@ -482,29 +436,35 @@ resource "aws_appautoscaling_policy" "api_v1_cpu" {
   }
 }
 
-# Auto Scaling - API v2
-resource "aws_appautoscaling_target" "api_v2" {
-  service_namespace  = "ecs"
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api_v2.name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  min_capacity       = var.min_capacity
-  max_capacity       = var.max_capacity
-}
+# Scheduled scaling for non-business hours
+resource "aws_appautoscaling_scheduled_action" "scale_down" {
+  count              = var.enable_scheduled_scaling ? 1 : 0
+  name               = "${var.app_name}-${var.environment}-scale-down"
+  service_namespace  = aws_appautoscaling_target.api_v1.service_namespace
+  resource_id        = aws_appautoscaling_target.api_v1.resource_id
+  scalable_dimension = aws_appautoscaling_target.api_v1.scalable_dimension
+  schedule           = "cron(0 ${split(":", var.business_hours_end)[0]} ? * MON-FRI *)"
 
-resource "aws_appautoscaling_policy" "api_v2_cpu" {
-  name               = "${var.app_name}-v2-${var.environment}-cpu"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.api_v2.resource_id
-  scalable_dimension = aws_appautoscaling_target.api_v2.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.api_v2.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-    target_value = 70.0
+  scalable_target_action {
+    min_capacity = 0
+    max_capacity = var.max_capacity
   }
 }
+
+resource "aws_appautoscaling_scheduled_action" "scale_up" {
+  count              = var.enable_scheduled_scaling ? 1 : 0
+  name               = "${var.app_name}-${var.environment}-scale-up"
+  service_namespace  = aws_appautoscaling_target.api_v1.service_namespace
+  resource_id        = aws_appautoscaling_target.api_v1.resource_id
+  scalable_dimension = aws_appautoscaling_target.api_v1.scalable_dimension
+  schedule           = "cron(0 ${split(":", var.business_hours_start)[0]} ? * MON-FRI *)"
+
+  scalable_target_action {
+    min_capacity = var.min_capacity
+    max_capacity = var.max_capacity
+  }
+}
+
 
 # Outputs
 output "cluster_name" {
@@ -513,15 +473,13 @@ output "cluster_name" {
 
 output "service_names" {
   value = [
-    aws_ecs_service.api_v1.name,
-    aws_ecs_service.api_v2.name
+    aws_ecs_service.api_v1.name
   ]
 }
 
 output "task_definition_arns" {
   value = [
-    aws_ecs_task_definition.api_v1.arn,
-    aws_ecs_task_definition.api_v2.arn
+    aws_ecs_task_definition.api_v1.arn
   ]
 }
 
@@ -535,12 +493,4 @@ output "blue_target_group_v1_name" {
 
 output "green_target_group_v1_name" {
   value = aws_lb_target_group.green_v1.name
-}
-
-output "blue_target_group_v2_name" {
-  value = aws_lb_target_group.blue_v2.name
-}
-
-output "green_target_group_v2_name" {
-  value = aws_lb_target_group.green_v2.name
 }

@@ -20,6 +20,12 @@ variable "availability_zones" {
   default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
 
+variable "single_nat_gateway" {
+  description = "Whether to use a single NAT Gateway across all environments for cost savings"
+  type        = bool
+  default     = false
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -70,7 +76,7 @@ resource "aws_internet_gateway" "main" {
 
 # Elastic IP for NAT Gateway
 resource "aws_eip" "nat" {
-  count = 1
+  count  = 1
   domain = "vpc"
 
   tags = {
@@ -79,7 +85,7 @@ resource "aws_eip" "nat" {
   }
 }
 
-# NAT Gateway
+# NAT Gateway - Using a single NAT Gateway for cost savings
 resource "aws_nat_gateway" "main" {
   count         = 1
   allocation_id = aws_eip.nat[0].id
