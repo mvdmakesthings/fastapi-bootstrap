@@ -78,6 +78,12 @@ variable "kms_key_id" {
   type        = string
 }
 
+variable "certificate_arn" {
+  description = "The ARN of the SSL certificate for HTTPS"
+  type        = string
+  default     = ""
+}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-${var.environment}"
@@ -196,7 +202,7 @@ resource "aws_lb_listener" "https" {
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  # certificate_arn   = var.certificate_arn # You would need to provide a certificate ARN
+  certificate_arn   = var.certificate_arn
 
   default_action {
     type = "fixed-response"

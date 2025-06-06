@@ -13,12 +13,11 @@ terraform {
   }
 
   backend "s3" {
-    # These values must be provided via the command line or a backend config file
-    # bucket         = "terraform-state-bucket"
-    # key            = "fastapi-bootstrap/terraform.tfstate"
-    # region         = "us-east-1"
-    # dynamodb_table = "terraform-locks"
-    # encrypt        = true
+    bucket         = "fastapi-bootstrap-terraform-state"
+    key            = "fastapi-bootstrap/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
   }
 }
 
@@ -43,6 +42,12 @@ variable "app_name" {
 variable "kms_key_id" {
   description = "The KMS key ID for CloudWatch Log Group encryption"
   type        = string
+}
+
+variable "certificate_arn" {
+  description = "The ARN of the SSL certificate for HTTPS"
+  type        = string
+  default     = ""
 }
 
 # Modules
@@ -87,7 +92,15 @@ module "ecs" {
   ecs_task_role           = module.iam.ecs_task_role_arn
   security_group_id       = module.security.ecs_security_group_id
   ecr_repository_url      = module.ecr.repository_url
-  kms_key_id             = var.kms_key_id
+  kms_key_id              = var.kms_key_id
+  certificate_arn         = var.certificate_arn
+}
+
+module "lambda" {
+  source = "../modules/lambda"
+
+  app_name    = var.app_name
+  environment = var.environment
 }
 
 module "codedeploy" {
@@ -104,6 +117,14 @@ output "vpc_id" {
   value = module.vpc.vpc_id
 }
 
+output "private_subnets" {
+  value = module.vpc.private_subnets
+}
+
+output "ecs_security_group_id" {
+  value = module.security.ecs_security_group_id
+}
+
 output "ecr_repository_url" {
   value = module.ecr.repository_url
 }
@@ -118,5 +139,25 @@ output "alb_dns_name" {
 
 output "api_v1_url" {
   value = "https://${module.ecs.alb_dns_name}/api/v1"
+}
+
+output "lambda_validate_before_install_arn" {
+  value = module.lambda.validate_before_install_arn
+}
+
+output "lambda_validate_deployment_arn" {
+  value = module.lambda.validate_deployment_arn
+}
+
+output "lambda_validate_test_traffic_arn" {
+  value = module.lambda.validate_test_traffic_arn
+}
+
+output "lambda_run_migrations_arn" {
+  value = module.lambda.run_migrations_arn
+}
+
+output "lambda_validate_production_arn" {
+  value = module.lambda.validate_production_arn
 }
 

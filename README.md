@@ -150,32 +150,38 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 
 1. Review the infrastructure documentation in [docs/infrastructure.md](docs/infrastructure.md) to understand the AWS architecture.
 
-2. Update your AWS account ID in the task definition and appspec files:
+2. Deploy the infrastructure using the deploy script:
    ```bash
-   find .aws -name 'task-definition-*.json' -exec sed -i '' 's/ACCOUNT_ID/YOUR_AWS_ACCOUNT_ID/g' {} \;
-   find .aws -name 'appspec-*.yaml' -exec sed -i '' 's/ACCOUNT_ID/YOUR_AWS_ACCOUNT_ID/g' {} \;
+   ./scripts/deploy.sh --environment dev --account-id YOUR_AWS_ACCOUNT_ID --region us-east-1 --domain example.com
    ```
+   
+   The script will automatically:
+   - Create a KMS key for encryption if it doesn't exist
+   - Create or use an existing SSL certificate for the domain
+   - Generate Lambda function zip files for deployment hooks
+   - Update terraform.tfvars with the actual ARNs
+   - Replace placeholders in task definition and appspec files
 
-2. Create an S3 bucket for Terraform state (optional but recommended):
+2. Set up the Terraform backend:
    ```bash
-   aws s3 mb s3://YOUR-ORGANIZATION-NAME-terraform-state-$(aws sts get-caller-identity --query Account --output text)
-   aws dynamodb create-table --table-name terraform-locks \
-     --attribute-definitions AttributeName=LockID,AttributeType=S \
-     --key-schema AttributeName=LockID,KeyType=HASH \
-     --billing-mode PAY_PER_REQUEST
+   ./scripts/setup-terraform-backend.sh --org-name YOUR-ORGANIZATION-NAME
    ```
-
-3. Update Terraform backend configuration in `terraform/main.tf`
+   
+   This script will:
+   - Create an S3 bucket for Terraform state
+   - Create a DynamoDB table for state locking
+   - Update the backend configuration in terraform/main.tf
 
 4. Deploy the infrastructure:
    ```bash
-   ./deploy.sh --environment dev
+   ./scripts/deploy.sh --environment dev --account-id YOUR_AWS_ACCOUNT_ID
    ```
 
 5. Set up GitHub repository secrets for CI/CD:
    - `AWS_ACCESS_KEY_ID`
    - `AWS_SECRET_ACCESS_KEY`
    - `AWS_REGION`
+   - `AWS_ACCOUNT_ID`
 
 ### Adding a New API Version
 
