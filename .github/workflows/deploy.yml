@@ -142,9 +142,14 @@ jobs:
 
       - name: Update task definition with deployment ID
         run: |
+          set -e
           DEPLOYMENT_ID=$(date +%s)
           sed -i.bak "s/DEPLOYMENT_ID_PLACEHOLDER/$DEPLOYMENT_ID/g" ${{ steps.task-def-v1.outputs.task-definition }}
-          echo "Using deployment ID: $DEPLOYMENT_ID"
+          if [[ $? -ne 0 ]]; then
+            echo "Error: Failed to update the task definition with the deployment ID." >&2
+            exit 1
+          fi
+          echo "Successfully updated the task definition with deployment ID: $DEPLOYMENT_ID"
 
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
