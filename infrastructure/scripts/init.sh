@@ -115,7 +115,7 @@ if command -v gh &> /dev/null; then
   read -p "Would you like to set up GitHub Actions secrets? (y/n): " SETUP_GH
   if [[ "$SETUP_GH" =~ ^[Yy]$ ]]; then
     echo "Setting up GitHub Actions secrets..."
-    
+
     # Check if we're in a GitHub repo
     if gh repo view &> /dev/null; then
       gh secret set AWS_ACCESS_KEY_ID
@@ -146,13 +146,13 @@ echo "Next steps:"
 echo "1. Push an initial image to the ECR repository:"
 ECR_REPOSITORY_URL="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/fastapi-bootstrap"
 echo "   aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL"
-echo "   docker build -t $ECR_REPOSITORY_URL:latest ."
+echo "   docker build -t $ECR_REPOSITORY_URL:latest -f infrastructure/docker/Dockerfile ."
 echo "   docker push $ECR_REPOSITORY_URL:latest"
 echo ""
 echo "2. Access your API at the URL shown above"
 echo ""
 echo "3. For local development, run:"
-echo "   docker-compose up -d"
+echo "   docker-compose -f infrastructure/docker/docker-compose.dev.yml up -d"
 echo ""
 echo "Documentation:"
 echo "- Infrastructure: $PROJECT_ROOT/docs/infrastructure.md"

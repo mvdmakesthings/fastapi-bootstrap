@@ -28,13 +28,13 @@ This is the simplest option for running the application locally, suitable for ba
 
 ```bash
 # Start the application
-docker-compose up -d
+docker-compose -f infrastructure/docker/docker-compose.yml up -d
 
 # View logs
-docker-compose logs -f
+docker-compose -f infrastructure/docker/docker-compose.yml logs -f
 
 # Stop the application
-docker-compose down
+docker-compose -f infrastructure/docker/docker-compose.yml down
 ```
 
 The API will be available at http://localhost:8000.
@@ -48,13 +48,13 @@ This option provides a more complete environment with:
 
 ```bash
 # Start the development environment
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose -f infrastructure/docker/docker-compose.dev.yml up -d
 
 # View logs
-docker-compose -f docker-compose.dev.yml logs -f
+docker-compose -f infrastructure/docker/docker-compose.dev.yml logs -f
 
 # Stop the environment
-docker-compose -f docker-compose.dev.yml down
+docker-compose -f infrastructure/docker/docker-compose.dev.yml down
 ```
 
 The API will be available at http://localhost:8000.
@@ -178,7 +178,7 @@ To run database migrations:
 poetry run alembic upgrade head
 
 # Using Docker
-docker-compose -f docker-compose.dev.yml exec app alembic upgrade head
+docker-compose -f infrastructure/docker/docker-compose.dev.yml exec app alembic upgrade head
 ```
 
 To create a new migration:

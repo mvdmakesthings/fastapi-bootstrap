@@ -59,7 +59,7 @@ FastAPI Bootstrap provides a complete foundation for building production-grade A
 
 3. Start the local development environment:
    ```bash
-   docker-compose -f docker-compose.dev.yml up -d
+   docker-compose -f infrastructure/docker/docker-compose.dev.yml up -d
    ```
 
 4. Access the API:
@@ -86,29 +86,31 @@ See [Deployment Guide](docs/deployment-guide.md) for detailed instructions.
 ## Project Structure
 
 ```
-├── .aws/                  # AWS deployment configuration files
-├── .github/workflows/     # GitHub Actions CI/CD configuration
-├── docs/                  # Documentation
-├── localstack/            # LocalStack configurations for AWS emulation
-├── scripts/               # Deployment and utility scripts
-├── src/                   # Application source code
-│   └── fastapi_bootstrap/ # FastAPI application
-│       ├── api/           # API endpoints by version
-│       │   ├── v1/        # Version 1 API
-│       │   └── v2/        # Version 2 API (example)
-│       └── utils/         # Utility functions and middleware
-├── terraform/             # Infrastructure as code
-│   ├── environments/      # Environment-specific configurations
+├── .aws/                    # AWS deployment configuration files
+├── .github/workflows/       # GitHub Actions CI/CD configuration
+├── docs/                    # Documentation
+├── infrastructure/          # Infrastructure-related components
+│   ├── docker/              # Docker configurations
+│   │   ├── Dockerfile       # Production Docker configuration
+│   │   ├── Dockerfile.dev   # Development Docker configuration
+│   │   ├── Dockerfile.test  # Testing Docker configuration
+│   │   └── docker-compose.* # Docker Compose configurations
+│   ├── localstack/          # LocalStack configurations for AWS emulation
+│   ├── scripts/             # Deployment and utility scripts
+│   └── terraform/           # Infrastructure as code
+│       ├── environments/    # Environment-specific configurations
+│       └── modules/         # Reusable Terraform modules
+├── src/                     # Application source code
+│   └── fastapi_bootstrap/   # FastAPI application
+│       ├── api/             # API endpoints by version
+│       │   ├── v1/          # Version 1 API
+│       │   └── v2/          # Version 2 API (example)
+│       └── utils/           # Utility functions and middleware
 │   │   ├── dev/
 │   │   ├── test/
 │   │   └── prod/
 │   └── modules/           # Reusable Terraform modules
 ├── tests/                 # Test suite
-├── docker-compose.yml     # Production Docker Compose configuration
-├── docker-compose.dev.yml # Development Docker Compose configuration
-├── docker-compose.test.yml # Test Docker Compose configuration
-├── Dockerfile             # Production Docker image
-└── Dockerfile.dev         # Development Docker image
 ```
 
 ## Development Workflow
@@ -155,5 +157,3 @@ poetry run alembic upgrade head
 MIT
 
 ## Contributors
-
-- Michael VanDyke ([@mvdmakesthings](https://github.com/mvdmakesthings))

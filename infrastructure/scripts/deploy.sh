@@ -98,7 +98,7 @@ CERTIFICATE_ARN=""
 if [[ -n "$DOMAIN_NAME" ]]; then
   echo "Creating or retrieving SSL certificate for $DOMAIN_NAME..."
   CERTIFICATE_ARN=$(aws acm list-certificates --query "CertificateSummaryList[?DomainName=='$DOMAIN_NAME'].CertificateArn" --output text)
-  
+
   if [[ -z "$CERTIFICATE_ARN" ]]; then
     echo "Creating new SSL certificate for $DOMAIN_NAME..."
     CERTIFICATE_ARN=$(aws acm request-certificate --domain-name $DOMAIN_NAME --validation-method DNS --query 'CertificateArn' --output text)
@@ -111,7 +111,7 @@ if [[ -n "$DOMAIN_NAME" ]]; then
 else
   echo "No domain provided. Using a self-signed certificate..."
   CERTIFICATE_ARN=$(aws acm list-certificates --query "CertificateSummaryList[?DomainName=='fastapi-bootstrap-${ENVIRONMENT}.local'].CertificateArn" --output text)
-  
+
   if [[ -z "$CERTIFICATE_ARN" ]]; then
     # Create a self-signed certificate
     echo "Creating self-signed certificate..."
@@ -186,7 +186,7 @@ echo ""
 echo "For first-time setup, you need to:"
 echo "1. Push an initial image to the ECR repository:"
 echo "   aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL"
-echo "   docker build -t $ECR_REPOSITORY_URL:latest ."
+echo "   docker build -t $ECR_REPOSITORY_URL:latest -f infrastructure/docker/Dockerfile ."
 echo "   docker push $ECR_REPOSITORY_URL:latest"
 echo ""
 echo "2. Set up GitHub repository secrets for CI/CD:"
