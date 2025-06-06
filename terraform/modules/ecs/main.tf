@@ -73,6 +73,30 @@ variable "container_port" {
   default     = 8000
 }
 
+variable "use_fargate_spot" {
+  description = "Whether to use Fargate Spot for cost savings (recommended for non-production)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_scheduled_scaling" {
+  description = "Whether to enable scheduled scaling to scale down during non-business hours"
+  type        = bool
+  default     = false
+}
+
+variable "business_hours_start" {
+  description = "Start time for business hours in UTC (format: HH:MM)"
+  type        = string
+  default     = "13:00"  # 9:00 AM EST/EDT
+}
+
+variable "business_hours_end" {
+  description = "End time for business hours in UTC (format: HH:MM)"
+  type        = string
+  default     = "01:00"  # 9:00 PM EST/EDT
+}
+
 variable "kms_key_id" {
   description = "The KMS key ID for encryption"
   type        = string
@@ -102,6 +126,18 @@ resource "aws_ecs_cluster" "main" {
   tags = {
     Name        = "${var.app_name}-${var.environment}"
     Environment = var.environment
+  }
+}
+
+# Configure capacity providers for the cluster
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name = aws_ecs_cluster.main.name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = var.use_fargate_spot && var.environment != "prod" ? "FARGATE_SPOT" : "FARGATE"
+    weight            = 100
   }
 }
 
@@ -324,7 +360,27 @@ resource "aws_ecs_service" "api_v1" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.api_v1.arn
   desired_count   = var.min_capacity
-  launch_type     = "FARGATE"
+  
+  # Use Fargate Spot for non-production environments when enabled
+  dynamic "capacity_provider_strategy" {
+    for_each = var.use_fargate_spot && var.environment != "prod" ? [1] : []
+    content {
+      capacity_provider = "FARGATE_SPOT"
+      weight            = 100
+    }
+  }
+  
+  # Use regular Fargate for production or when Spot is not enabled
+  dynamic "capacity_provider_strategy" {
+    for_each = !var.use_fargate_spot || var.environment == "prod" ? [1] : []
+    content {
+      capacity_provider = "FARGATE"
+      weight            = 100
+    }
+  }
+  
+  # Only set launch_type when not using capacity_provider_strategy
+  launch_type     = var.use_fargate_spot ? null : "FARGATE"
 
   network_configuration {
     subnets          = var.private_subnets
@@ -377,6 +433,35 @@ resource "aws_appautoscaling_policy" "api_v1_cpu" {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
     target_value = 70.0
+  }
+}
+
+# Scheduled scaling for non-business hours
+resource "aws_appautoscaling_scheduled_action" "scale_down" {
+  count              = var.enable_scheduled_scaling ? 1 : 0
+  name               = "${var.app_name}-${var.environment}-scale-down"
+  service_namespace  = aws_appautoscaling_target.api_v1.service_namespace
+  resource_id        = aws_appautoscaling_target.api_v1.resource_id
+  scalable_dimension = aws_appautoscaling_target.api_v1.scalable_dimension
+  schedule           = "cron(0 ${split(":", var.business_hours_end)[0]} ? * MON-FRI *)"
+
+  scalable_target_action {
+    min_capacity = 0
+    max_capacity = var.max_capacity
+  }
+}
+
+resource "aws_appautoscaling_scheduled_action" "scale_up" {
+  count              = var.enable_scheduled_scaling ? 1 : 0
+  name               = "${var.app_name}-${var.environment}-scale-up"
+  service_namespace  = aws_appautoscaling_target.api_v1.service_namespace
+  resource_id        = aws_appautoscaling_target.api_v1.resource_id
+  scalable_dimension = aws_appautoscaling_target.api_v1.scalable_dimension
+  schedule           = "cron(0 ${split(":", var.business_hours_start)[0]} ? * MON-FRI *)"
+
+  scalable_target_action {
+    min_capacity = var.min_capacity
+    max_capacity = var.max_capacity
   }
 }
 

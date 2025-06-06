@@ -18,3 +18,9 @@ waf_enabled = true
 
 # Monitoring configuration
 enable_alerts = false
+
+# Cost optimization features
+use_fargate_spot = true
+enable_scheduled_scaling = true
+business_hours_start = "13:00"  # 9:00 AM EST/EDT
+business_hours_end = "01:00"    # 9:00 PM EST/EDT

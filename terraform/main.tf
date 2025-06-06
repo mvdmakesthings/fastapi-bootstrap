@@ -50,12 +50,40 @@ variable "certificate_arn" {
   default     = ""
 }
 
+# Cost optimization variables
+variable "use_fargate_spot" {
+  description = "Whether to use Fargate Spot for cost savings (recommended for non-production)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_scheduled_scaling" {
+  description = "Whether to enable scheduled scaling to scale down during non-business hours"
+  type        = bool
+  default     = false
+}
+
+variable "business_hours_start" {
+  description = "Start time for business hours in UTC (format: HH:MM)"
+  type        = string
+  default     = "13:00"  # 9:00 AM EST/EDT
+}
+
+variable "business_hours_end" {
+  description = "End time for business hours in UTC (format: HH:MM)"
+  type        = string
+  default     = "01:00"  # 9:00 PM EST/EDT
+}
+
 # Modules
 module "vpc" {
   source = "../modules/vpc"
 
   environment = var.environment
   app_name    = var.app_name
+  
+  # Use a single NAT Gateway across all environments for cost savings
+  single_nat_gateway = true
 }
 
 module "security" {
@@ -95,6 +123,12 @@ module "ecs" {
   kms_key_id              = var.kms_key_id
   certificate_arn         = var.certificate_arn
   web_acl_arn             = module.security.web_acl_arn
+  
+  # Cost optimization features
+  use_fargate_spot       = var.environment != "prod" ? var.use_fargate_spot : false
+  enable_scheduled_scaling = var.environment != "prod" ? var.enable_scheduled_scaling : false
+  business_hours_start   = var.business_hours_start
+  business_hours_end     = var.business_hours_end
 }
 
 module "lambda" {
