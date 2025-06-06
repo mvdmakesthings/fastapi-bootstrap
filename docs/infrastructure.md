@@ -1,10 +1,12 @@
 # Infrastructure Documentation
 
-This document provides an overview of the infrastructure setup for the FastAPI Bootstrap project. The infrastructure is managed using Terraform and deployed to AWS.
+This document provides a comprehensive overview of the infrastructure architecture and configuration for the FastAPI Bootstrap project. It is designed for Solutions Architects, DevOps Engineers, and Software Engineers who need to understand, deploy, and maintain the AWS infrastructure.
 
 ## Overview
 
 The FastAPI Bootstrap application is containerized and deployed to AWS Fargate within Amazon ECS (Elastic Container Service). The infrastructure follows a modern microservices architecture pattern with blue/green deployment capabilities through AWS CodeDeploy.
+
+All infrastructure is defined as code using Terraform, enabling consistent, repeatable deployments across multiple environments (development, testing, production).
 
 ## Infrastructure Components
 
@@ -12,17 +14,21 @@ The FastAPI Bootstrap application is containerized and deployed to AWS Fargate w
 
 | Service | Purpose |
 |---------|---------|
-| **ECS Fargate** | Serverless container orchestration service to run the FastAPI application |
-| **ECR** | Container registry to store Docker images |
-| **ALB** | Application Load Balancer to route traffic to the application |
-| **VPC** | Virtual Private Cloud with public and private subnets |
-| **CodeDeploy** | Manages blue/green deployments |
-| **CloudWatch** | Monitoring and logging |
-| **IAM** | Identity and Access Management for permissions |
-| **S3** | Storage for Terraform state (backend) |
-| **DynamoDB** | Terraform state locking |
+| **ECS Fargate** | Serverless container orchestration service to run the FastAPI application without managing servers |
+| **ECR** | Container registry to store Docker images with vulnerability scanning and immutable tags |
+| **ALB** | Application Load Balancer to route traffic to the application, handle SSL termination, and support blue/green deployments |
+| **VPC** | Virtual Private Cloud with public and private subnets across multiple Availability Zones for isolation and resilience |
+| **CodeDeploy** | Manages blue/green deployments with automated rollback capabilities |
+| **CloudWatch** | Comprehensive monitoring, logging, and alerting for all components |
+| **IAM** | Identity and Access Management for fine-grained access control with least-privilege policies |
+| **S3** | Storage for Terraform state (backend) and other application assets |
+| **DynamoDB** | Terraform state locking to prevent concurrent modifications |
+| **KMS** | Key Management Service for encryption of sensitive data |
+| **SSM Parameter Store** | Secure storage for configuration and secrets |
+| **Route 53** | Optional DNS management for custom domains |
+| **WAF** | Web Application Firewall for protection against common vulnerabilities |
 
-## Infrastructure Diagram
+## Infrastructure Architecture
 
 ```mermaid
 graph TD
@@ -48,6 +54,101 @@ graph TD
         CD[CodeDeploy]
         IAM[IAM Roles]
     end
+
+    User[User] -->|HTTPS| ALB
+    ALB -->|HTTP| BLUE
+    ALB -->|HTTP| GREEN
+    BLUE --> CW
+    GREEN --> CW
+    CD -->|Deployment| GREEN
+    ECR -->|Images| ECS
+```
+
+## Terraform Structure
+
+The infrastructure is defined using a modular Terraform approach, organized as follows:
+
+```
+terraform/
+├── main.tf              # Main Terraform configuration and provider setup
+├── environments/        # Environment-specific configurations
+│   ├── dev/
+│   │   └── terraform.tfvars  # Development environment variables
+│   ├── test/
+│   │   └── terraform.tfvars  # Testing environment variables
+│   └── prod/
+│       └── terraform.tfvars  # Production environment variables
+└── modules/             # Reusable Terraform modules
+    ├── api_gateway/     # Optional API Gateway configuration
+    ├── codedeploy/      # Blue/Green deployment configuration
+    ├── database/        # RDS PostgreSQL configuration
+    ├── ecr/             # Elastic Container Registry
+    ├── ecs/             # ECS Fargate cluster and services
+    ├── iam/             # IAM roles and policies
+    ├── lambda/          # Lambda functions for deployment hooks
+    ├── monitoring/      # CloudWatch dashboards and alarms
+    ├── security/        # WAF and security groups
+    ├── ssm/             # Systems Manager Parameter Store
+    └── vpc/             # Virtual Private Cloud network configuration
+```
+
+### Main Terraform Configuration
+
+The `main.tf` file serves as the entry point for Terraform and sets up:
+
+1. **AWS Provider Configuration**: Region, version constraints
+2. **Backend Configuration**: S3 bucket for state storage with DynamoDB locking
+3. **Module Invocations**: Calling all required modules with appropriate variables
+4. **Output Definitions**: Information about created resources
+
+```hcl
+provider "aws" {
+  region = var.aws_region
+}
+
+terraform {
+  required_version = ">= 1.0.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "fastapi-bootstrap-terraform-state"
+    key            = "fastapi-bootstrap/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}
+
+# Modules
+module "vpc" {
+  source      = "./modules/vpc"
+  environment = var.environment
+  app_name    = var.app_name
+  # ... other variables
+}
+
+module "ecs" {
+  source        = "./modules/ecs"
+  environment   = var.environment
+  app_name      = var.app_name
+  vpc_id        = module.vpc.vpc_id
+  subnet_ids    = module.vpc.private_subnet_ids
+  # ... other variables
+}
+
+# ... other modules
+
+# Outputs
+output "api_url" {
+  value = module.ecs.alb_dns_name
+}
+```
 
     subgraph "CI/CD Pipeline"
         GH[GitHub Actions]
@@ -151,42 +252,116 @@ graph TD
   - Runs linting, spell checking, and unit tests
   - Ensures code quality before deployment
 
-## Deployment Flow
+## Infrastructure Management and Maintenance
 
-1. **Code Push**: Developer pushes code to GitHub (develop branch for dev, main branch for prod)
-2. **CI Pipeline**:
-   - GitHub Actions runs tests
-   - Builds Docker image and pushes to ECR
-3. **CD Pipeline**:
-   - Updates ECS task definition with new image
-   - Initiates blue/green deployment via CodeDeploy
-   - Runs pre and post-deployment validation
-4. **Deployment**:
-   - New version is deployed to the green environment
-   - Traffic is gradually shifted from blue to green
-   - Once validated, blue environment is terminated
+Proper management and maintenance of the infrastructure are critical for long-term reliability, security, and cost optimization. This section provides guidance for Solutions Architects, DevOps Engineers, and Software Engineers responsible for maintaining the infrastructure.
 
-## Environment-specific Configuration
+### Infrastructure State Management
 
-The infrastructure supports three distinct environments:
+The Terraform state is stored in an S3 bucket with DynamoDB locking to enable team collaboration and prevent concurrent modifications:
 
-1. **Development (dev)**: Used for ongoing development
-   - Minimal resources
-   - Triggered by pushes to the develop branch
+```
+s3://fastapi-bootstrap-terraform-state/fastapi-bootstrap/terraform.tfstate
+```
 
-2. **Test (test)**: Used for QA and testing
-   - Similar to dev but isolated
-   - Can be used for feature branch testing
+Key state management practices:
 
-3. **Production (prod)**: Live environment
-   - Higher resource allocation
-   - Auto-scaling enabled
-   - Enhanced security measures
-   - Deletion protection enabled
-   - Triggered by pushes to the main branch
+1. **Never manually edit state files**: Use Terraform commands to manipulate state
+2. **Enable versioning on the S3 bucket**: Allows recovery from accidental state corruption
+3. **Use state locking**: Prevents concurrent modifications that could corrupt state
+4. **Backup state regularly**: Consider periodic backups of the state file
 
-## Resource Scaling
+State-related commands:
 
-- **Development/Test**: Fixed at 1 container (256 CPU units, 512MB memory)
-- **Production**: Scales from 1 to 2 containers (1024 CPU units, 2048MB memory)
-- Auto-scaling based on CPU utilization (target: 70%)
+```bash
+# View current state
+terraform state list
+
+# View specific resource details
+terraform state show aws_ecs_service.app_service
+
+# Remove a resource from state (careful!)
+terraform state rm aws_ecs_service.app_service
+```
+
+### Infrastructure Upgrades
+
+When upgrading infrastructure components:
+
+1. **Terraform Version Upgrades**:
+   - Review the changelog for breaking changes
+   - Run `terraform plan` to check for unexpected changes
+   - Update provider versions incrementally
+
+2. **AWS Service Upgrades**:
+   - Test in development environment first
+   - Use blue/green deployment for major changes
+   - Update monitoring to catch any issues
+
+3. **Module Updates**:
+   - Keep modules versioned
+   - Document changes in each version
+   - Test thoroughly before applying
+
+### Infrastructure Monitoring
+
+The following CloudWatch dashboards and alarms are configured:
+
+1. **Service Health Dashboard**: Overall service health
+   - ECS service status
+   - Load balancer metrics
+   - Error rates
+
+2. **Performance Dashboard**: Performance metrics
+   - Response times
+   - CPU and memory utilization
+   - Scaling events
+
+3. **Cost Dashboard**: Cost monitoring
+   - Service-by-service cost breakdown
+   - Trends and anomalies
+
+Key alarms:
+
+- **High Error Rate**: Triggers when HTTP 5xx errors exceed threshold
+- **High CPU Utilization**: Triggers when CPU exceeds 85% for 5 minutes
+- **High Memory Utilization**: Triggers when memory exceeds 85% for 5 minutes
+- **Failed Deployments**: Triggers on deployment failures
+
+### Disaster Recovery
+
+The infrastructure includes the following disaster recovery capabilities:
+
+1. **Automated Backups**:
+   - Database: Daily automated backups with 7-day retention
+   - Configuration: Stored in version-controlled Terraform code
+   - Application state: Designed to be stateless
+
+2. **Recovery Procedures**:
+   - Database: Point-in-time recovery from RDS snapshots
+   - Infrastructure: Recreate from Terraform code
+   - Application: Redeploy from container images in ECR
+
+3. **Multi-AZ Deployment**:
+   - Services deployed across multiple Availability Zones
+   - Automatic failover for database instances
+   - Load balancing across healthy instances
+
+### Infrastructure Security Maintenance
+
+Regular security maintenance tasks:
+
+1. **Patch Management**:
+   - Container images: Rebuild with latest patches monthly
+   - Database: Apply RDS maintenance updates in maintenance window
+   - Dependencies: Update Terraform providers quarterly
+
+2. **Security Scanning**:
+   - Container vulnerability scanning in CI/CD pipeline
+   - Infrastructure security scanning with tfsec
+   - Regular security assessments
+
+3. **Access Reviews**:
+   - Quarterly review of IAM policies and roles
+   - Rotation of access keys
+   - Audit of Security Group rules

@@ -1,6 +1,17 @@
 # Local Development Guide
 
-This guide provides instructions for setting up a local development environment for the FastAPI Bootstrap project.
+This guide provides comprehensive instructions for setting up and using a local development environment for the FastAPI Bootstrap project. It is designed for Solutions Architects, DevOps Engineers, and Software Engineers who need to develop, test, and extend the application locally.
+
+## Prerequisites
+
+Before starting, ensure you have the following installed:
+
+- **Docker** and **Docker Compose** (latest version recommended)
+- **Python 3.11+** (for local development outside containers)
+- **Poetry** (for Python dependency management)
+- **AWS CLI** (for interacting with LocalStack)
+- **Git** (for version control)
+- **Terraform** (optional, for local infrastructure testing)
 
 ## Development Options
 
@@ -13,7 +24,7 @@ You have several options for local development:
 
 ## Option 1: Standard Docker Compose
 
-This is the simplest option for running the application locally:
+This is the simplest option for running the application locally, suitable for basic API development without AWS service dependencies:
 
 ```bash
 # Start the application
@@ -50,14 +61,63 @@ The API will be available at http://localhost:8000.
 
 ### LocalStack Services
 
-LocalStack provides local emulation of AWS services:
+LocalStack provides local emulation of AWS services, making it possible to develop and test AWS integrations without connecting to actual AWS services. The project includes a pre-configured LocalStack setup with initialization scripts.
 
-- **S3**: http://localhost:4566 (endpoint URL for S3)
-- **DynamoDB**: http://localhost:4566 (endpoint URL for DynamoDB)
-- **SSM Parameter Store**: http://localhost:4566 (endpoint URL for SSM)
-- **KMS**: http://localhost:4566 (endpoint URL for KMS)
+#### Available Services
 
-To use LocalStack with the AWS CLI:
+- **S3**: For object storage (Terraform state, etc.)
+- **DynamoDB**: For NoSQL database (Terraform state locking)
+- **SSM Parameter Store**: For secure configuration management
+- **KMS**: For encryption key management
+- **Secrets Manager**: For storing and retrieving secrets
+
+#### LocalStack Initialization
+
+The `init-aws.sh` script in the `localstack` directory automatically initializes the LocalStack environment with necessary resources:
+
+```bash
+#!/bin/bash
+# Initialize AWS resources in LocalStack
+
+# Create S3 bucket for Terraform state
+echo "Creating S3 bucket for Terraform state..."
+awslocal s3 mb s3://terraform-state
+
+# Create DynamoDB table for Terraform state locking
+echo "Creating DynamoDB table for Terraform state locking..."
+awslocal dynamodb create-table \
+  --table-name terraform-locks \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST
+
+# Create KMS key for encryption
+echo "Creating KMS key..."
+KMS_KEY_ID=$(awslocal kms create-key --description "FastAPI Bootstrap encryption key" --query 'KeyMetadata.KeyId' --output text)
+awslocal kms create-alias --alias-name alias/fastapi-bootstrap-dev --target-key-id $KMS_KEY_ID
+
+# Create SSM parameters
+echo "Creating SSM parameters..."
+awslocal ssm put-parameter \
+  --name "/fastapi-bootstrap/dev/database/url" \
+  --value "postgresql://postgres:postgres@db:5432/app" \
+  --type SecureString \
+  --overwrite
+
+awslocal ssm put-parameter \
+  --name "/fastapi-bootstrap/dev/api/secret_key" \
+  --value "local-development-secret-key" \
+  --type SecureString \
+  --overwrite
+
+echo "LocalStack initialization complete!"
+```
+
+This script runs automatically when the LocalStack container starts through Docker Compose's entrypoint mechanism.
+
+#### Using LocalStack CLI
+
+To interact with LocalStack services, use the AWS CLI with the `--endpoint-url` parameter:
 
 ```bash
 # List S3 buckets

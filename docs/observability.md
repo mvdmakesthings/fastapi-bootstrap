@@ -1,60 +1,91 @@
 # Observability Documentation
 
-This document outlines the observability features implemented in the FastAPI Bootstrap project.
+This document outlines the observability features implemented in the FastAPI Bootstrap project and provides guidance for DevOps Engineers and Software Engineers on monitoring, troubleshooting, and optimizing application performance.
 
-## Overview
+## Executive Summary
 
-Observability in the FastAPI Bootstrap project is implemented through multiple components:
+The FastAPI Bootstrap project implements a comprehensive observability stack that integrates metrics, logging, and distributed tracing. This approach provides deep visibility into application performance, infrastructure health, and business operations, enabling rapid troubleshooting, proactive monitoring, and data-driven optimization.
 
-1. **Metrics**: CloudWatch metrics for system and application performance
-2. **Logging**: Centralized logging with CloudWatch Logs
-3. **Tracing**: Distributed tracing with AWS X-Ray
-4. **Dashboards**: Pre-configured CloudWatch dashboards
-5. **Alerting**: CloudWatch Alarms for critical metrics
+## Observability Architecture
 
-## Metrics
+The observability architecture follows a three-pillar approach:
 
-The following metrics are collected and monitored:
+![Observability Architecture](https://via.placeholder.com/800x400?text=Observability+Architecture)
+
+1. **Metrics**: Real-time numerical data about system performance
+2. **Logging**: Structured event records with contextual information
+3. **Tracing**: End-to-end transaction flows across distributed systems
+
+These components are integrated with AWS managed services for scalability, reliability, and cost-effectiveness.
+
+## Metrics System
 
 ### Infrastructure Metrics
 
+Automatically collected and monitored through CloudWatch:
+
 - **ECS Metrics**:
-  - CPU Utilization
-  - Memory Utilization
+  - CPU Utilization (avg, min, max)
+  - Memory Utilization (avg, min, max)
   - Running Task Count
+  - Network Performance (bytes in/out, packets in/out)
 
 - **ALB Metrics**:
-  - Request Count
-  - Target Response Time
+  - Request Count (total, per target group)
+  - Target Response Time (avg, p90, p95, p99)
   - HTTP Status Codes (2XX, 4XX, 5XX)
-  - Connection Count
+  - Connection Count (active, new, rejected)
+  - TLS Negotiation Errors
 
 - **WAF Metrics**:
-  - Allowed Requests
-  - Blocked Requests
+  - Allowed Requests (count, rate)
+  - Blocked Requests (count, rate, by rule)
   - Rate-limited Requests
+  - CAPTCHA Attempts (successful, failed)
 
 ### Application Metrics
 
-The application can be extended to publish custom metrics to CloudWatch:
+Custom metrics are published to CloudWatch using the AWS SDK:
 
 ```python
 import boto3
+from fastapi_bootstrap.utils.telemetry import create_metrics_counter
 
-cloudwatch = boto3.client('cloudwatch')
+# Define metrics
+order_counter = create_metrics_counter("orders.created", "Number of orders created")
 
-def publish_metric(name, value, unit='Count'):
-    cloudwatch.put_metric_data(
-        Namespace='FastAPIBootstrap',
-        MetricData=[
-            {
-                'MetricName': name,
-                'Value': value,
-                'Unit': unit
-            }
-        ]
-    )
+# Use metrics with dimensions
+def create_order(order_data):
+    # Business logic
+    order = order_service.create(order_data)
+
+    # Record metric with dimensions
+    order_counter.add(1, {
+        "order_type": order.type,
+        "customer_tier": order.customer.tier,
+        "region": order.shipping_address.region
+    })
+
+    return order
 ```
+
+### Key Performance Indicators (KPIs)
+
+The following business and technical KPIs are tracked:
+
+- **Business KPIs**:
+  - Requests per minute (RPM)
+  - Error rate percentage
+  - P95 latency
+  - Success rate by endpoint
+  - Daily active users
+
+- **Technical KPIs**:
+  - CPU and memory utilization
+  - Garbage collection frequency and duration
+  - Database connection pool utilization
+  - Cache hit/miss ratio
+  - Dependency health (external services)
 
 ## Logging
 
@@ -348,10 +379,10 @@ import requests
 def call_external_service(url, data):
     # Get the current headers
     headers = {"Content-Type": "application/json"}
-    
+
     # Propagate the trace context to the outgoing request
     headers = propagate_context(headers)
-    
+
     # Make the request with the updated headers
     response = requests.post(url, json=data, headers=headers)
     return response
@@ -396,24 +427,24 @@ payment_latency = create_metrics_histogram(
 def create_order(order_data):
     # Record the order creation
     order_counter.add(1, {"order_type": order_data.type})
-    
+
     # Process the order
     result = process_order(order_data)
-    
+
     return result
 
 def process_payment(payment_data):
     start_time = time.perf_counter()
-    
+
     # Process the payment
     result = payment_processor.process(payment_data)
-    
+
     # Record the processing time
     duration_ms = (time.perf_counter() - start_time) * 1000
     payment_latency.record(duration_ms, {
         "payment_method": payment_data.method,
         "successful": result.success
     })
-    
+
     return result
 ```
