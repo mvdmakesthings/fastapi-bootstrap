@@ -84,6 +84,12 @@ variable "certificate_arn" {
   default     = ""
 }
 
+variable "web_acl_arn" {
+  description = "The ARN of the WAF Web ACL"
+  type        = string
+  default     = null
+}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-${var.environment}"
@@ -127,6 +133,14 @@ resource "aws_lb" "main" {
     Name        = "${var.app_name}-${var.environment}"
     Environment = var.environment
   }
+}
+
+# Associate WAF Web ACL with ALB if provided
+resource "aws_wafv2_web_acl_association" "main" {
+  count = var.web_acl_arn != null ? 1 : 0
+
+  resource_arn = aws_lb.main.arn
+  web_acl_arn  = var.web_acl_arn
 }
 
 # ALB Target Groups for Blue/Green deployment - API v1
@@ -243,38 +257,60 @@ resource "aws_ecs_task_definition" "api_v1" {
   execution_role_arn       = var.ecs_task_execution_role
   task_role_arn            = var.ecs_task_role
 
-  container_definitions = jsonencode([{
-    name      = "${var.app_name}-v1"
-    image     = "${var.ecr_repository_url}:latest"
-    essential = true
+  container_definitions = jsonencode([
+    {
+      name      = "${var.app_name}-v1"
+      image     = "${var.ecr_repository_url}:latest"
+      essential = true
 
-    portMappings = [{
-      containerPort = var.container_port
-      hostPort      = var.container_port
-      protocol      = "tcp"
-    }]
+      portMappings = [{
+        containerPort = var.container_port
+        hostPort      = var.container_port
+        protocol      = "tcp"
+      }]
 
-    environment = [
-      { name = "ENVIRONMENT", value = var.environment }
-    ]
+      environment = [
+        { name = "ENVIRONMENT", value = var.environment }
+      ]
 
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.main.name
-        "awslogs-region"        = "us-east-1"
-        "awslogs-stream-prefix" = "ecs-v1"
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.main.name
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "ecs-v1"
+        }
+      }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    },
+    {
+      name      = "xray-daemon"
+      image     = "amazon/aws-xray-daemon:latest"
+      essential = true
+      
+      portMappings = [{
+        containerPort = 2000
+        hostPort      = 2000
+        protocol      = "udp"
+      }]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.main.name
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "xray"
+        }
       }
     }
-
-    healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health || exit 1"]
-      interval    = 30
-      timeout     = 5
-      retries     = 3
-      startPeriod = 60
-    }
-  }])
+  ])
 
   tags = {
     Name        = "${var.app_name}-v1-${var.environment}"

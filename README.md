@@ -20,6 +20,8 @@ A bootstrapped FastAPI project with versioned APIs, blue/green deployment, and m
 ## Documentation
 - **Detailed Infrastructure Documentation**: Comprehensive overview of the AWS architecture in [docs/infrastructure.md](docs/infrastructure.md)
 - **Blue/Green Deployment Documentation**: Detailed explanation of the deployment strategy in [docs/blue-green-deployment.md](docs/blue-green-deployment.md)
+- **Security Documentation**: Security features and best practices in [docs/security.md](docs/security.md)
+- **Observability Documentation**: Monitoring, logging, and tracing in [docs/observability.md](docs/observability.md)
 ---
 
 ## Project Structure

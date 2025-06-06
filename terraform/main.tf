@@ -94,6 +94,7 @@ module "ecs" {
   ecr_repository_url      = module.ecr.repository_url
   kms_key_id              = var.kms_key_id
   certificate_arn         = var.certificate_arn
+  web_acl_arn             = module.security.web_acl_arn
 }
 
 module "lambda" {
@@ -101,6 +102,38 @@ module "lambda" {
 
   app_name    = var.app_name
   environment = var.environment
+}
+
+module "ssm" {
+  source = "../modules/ssm"
+
+  app_name    = var.app_name
+  environment = var.environment
+  kms_key_id  = var.kms_key_id
+  parameters  = {
+    # Example parameters - these would be populated from variables in a real deployment
+    "database/url" = {
+      value       = "postgresql://user:password@localhost:5432/db"
+      description = "Database connection URL"
+      type        = "SecureString"
+    },
+    "api/secret_key" = {
+      value       = "example-secret-key-replace-in-production"
+      description = "API secret key"
+      type        = "SecureString"
+    }
+  }
+}
+
+module "monitoring" {
+  source = "../modules/monitoring"
+
+  app_name       = var.app_name
+  environment    = var.environment
+  cluster_name   = module.ecs.cluster_name
+  service_names  = module.ecs.service_names
+  alb_arn_suffix = split("/", module.ecs.alb_dns_name)[0]
+  alarm_email    = var.environment == "prod" ? "alerts@example.com" : ""
 }
 
 module "codedeploy" {
@@ -113,6 +146,11 @@ module "codedeploy" {
 }
 
 # Outputs
+output "dashboard_url" {
+  value = "https://console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${module.monitoring.dashboard_name}"
+  description = "URL to the CloudWatch dashboard"
+}
+
 output "vpc_id" {
   value = module.vpc.vpc_id
 }
