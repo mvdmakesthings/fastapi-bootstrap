@@ -87,29 +87,20 @@ def log_event(event_type, **kwargs):
 
 ## Distributed Tracing
 
-The application uses OpenTelemetry for distributed tracing with support for multiple backends:
+The application uses OpenTelemetry for distributed tracing with AWS X-Ray:
 
-- **AWS X-Ray** (default): Enterprise-grade distributed tracing from AWS
-- **OTLP**: OpenTelemetry Protocol for systems like Honeycomb, Lightstep, New Relic, Datadog
-- **Jaeger**: Open-source distributed tracing (requires additional package)
-- **Console**: Local debugging exporter
+- **AWS X-Ray**: Enterprise-grade distributed tracing from AWS
+- **Console**: Optional local debugging exporter (enabled with OTEL_DEBUG=true)
 
 ### Configuring OpenTelemetry
 
 OpenTelemetry is configured using environment variables:
 
 ```bash
-# Choose an exporter
-OTEL_EXPORTER=xray|otlp|jaeger|console
+# Enable debug console output (optional)
+OTEL_DEBUG=true
 
-# For OTLP exporter (Honeycomb, Lightstep, etc.)
-OTEL_EXPORTER_OTLP_ENDPOINT=https://api.honeycomb.io:443
-OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-team=YOUR_API_KEY"
-
-# For Jaeger exporter
-OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14268/api/traces
-
-# Other standard OpenTelemetry environment variables
+# Standard OpenTelemetry environment variables
 OTEL_SERVICE_NAME=fastapi-bootstrap
 OTEL_RESOURCE_ATTRIBUTES=deployment.region=us-west-2,team=backend
 ```
@@ -136,6 +127,13 @@ tracer_provider = TracerProvider(resource=resource)
 # Configure the exporter (X-Ray, OTLP, Jaeger, etc.)
 # Example for X-Ray:
 from opentelemetry.exporter.aws_xray import AwsXRaySpanExporter
+from opentelemetry.propagator.aws_xray import AwsXRayPropagator
+from opentelemetry import propagate
+
+# Set the propagator for X-Ray
+propagate.set_global_textmap(AwsXRayPropagator())
+
+# Configure the X-Ray exporter
 exporter = AwsXRaySpanExporter()
 tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
 
@@ -158,11 +156,10 @@ The following libraries are automatically instrumented:
 Optional instrumentation (install with extras):
 
 ```bash
-# Install all instrumentation and exporters
-pip install ".[all]"
+# Install all instrumentation
+pip install ".[all-instrumentation]"
 
 # Or individual components
-pip install ".[jaeger]"
 pip install ".[sqlalchemy]"
 pip install ".[redis]"
 pip install ".[mysql]"
@@ -182,18 +179,12 @@ pip install "opentelemetry-instrumentation-requests>=0.44b0"
 pip install "opentelemetry-instrumentation-boto3>=0.44b0"
 ```
 
-### Exporters
+### AWS X-Ray Integration
 
 ```bash
-# Install the exporter you need
-# AWS X-Ray
+# Install AWS X-Ray integration
 pip install "opentelemetry-exporter-aws-xray>=1.0.0"
-
-# OTLP (for Honeycomb, Lightstep, etc.)
-pip install "opentelemetry-exporter-otlp>=1.22.0"
-
-# Jaeger
-pip install "opentelemetry-exporter-jaeger>=1.22.0"
+pip install "opentelemetry-propagator-aws-xray>=1.0.0"
 ```
 
 ### Additional Instrumentation
@@ -346,4 +337,83 @@ except Exception as e:
 
     # Handle the error
     handle_error(e)
+```
+
+### Context Propagation
+
+```python
+from fastapi_bootstrap.utils.telemetry import propagate_context
+import requests
+
+def call_external_service(url, data):
+    # Get the current headers
+    headers = {"Content-Type": "application/json"}
+    
+    # Propagate the trace context to the outgoing request
+    headers = propagate_context(headers)
+    
+    # Make the request with the updated headers
+    response = requests.post(url, json=data, headers=headers)
+    return response
+```
+
+### Using Baggage for Cross-Service Context
+
+```python
+from fastapi_bootstrap.utils.telemetry import create_baggage, get_baggage
+
+# Set baggage items that will be propagated with the trace
+create_baggage({
+    "user.id": user_id,
+    "tenant.id": tenant_id,
+    "deployment.region": "us-west-2"
+})
+
+# Later, in another service or component, retrieve the baggage
+user_id = get_baggage("user.id")
+```
+
+### Metrics Collection
+
+```python
+from fastapi_bootstrap.utils.telemetry import create_metrics_counter, create_metrics_histogram
+
+# Create a counter for tracking business events
+order_counter = create_metrics_counter(
+    name="orders.created",
+    description="Number of orders created",
+    unit="1"
+)
+
+# Create a histogram for tracking latency
+payment_latency = create_metrics_histogram(
+    name="payment.processing_time",
+    description="Time taken to process payments",
+    unit="ms"
+)
+
+# Use the metrics
+def create_order(order_data):
+    # Record the order creation
+    order_counter.add(1, {"order_type": order_data.type})
+    
+    # Process the order
+    result = process_order(order_data)
+    
+    return result
+
+def process_payment(payment_data):
+    start_time = time.perf_counter()
+    
+    # Process the payment
+    result = payment_processor.process(payment_data)
+    
+    # Record the processing time
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    payment_latency.record(duration_ms, {
+        "payment_method": payment_data.method,
+        "successful": result.success
+    })
+    
+    return result
 ```

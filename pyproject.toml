@@ -8,46 +8,31 @@ license = "MIT"
 readme = "README.md"
 keywords = ["fastapi", "bootstrap", "clean architecture", "testing", "IaC", "infrastructure as code", "deployment"]
 dependencies = [
-    "python-dotenv (>=1.1.0,<2.0.0)",
-    "fastapi (>=0.103.0,<0.104.0)",
-    "uvicorn (>=0.23.0,<0.24.0)",
-    "pydantic (>=2.0.0,<3.0.0)",
-    "pydantic-settings (>=2.0.0,<3.0.0)",
-    "boto3 (>=1.38.31,<2.0.0)",
-    "aws-xray-sdk (>=2.14.0,<3.0.0)",
-    "mangum (>=0.19.0,<0.20.0)",
-    "opentelemetry-api~=1.12",
-    "opentelemetry-sdk~=1.12",
-    "opentelemetry-instrumentation-fastapi>=0.40b0",
-    "opentelemetry-instrumentation-requests>=0.40b0",
-    "opentelemetry-instrumentation-botocore>=0.40b0",
-    "opentelemetry-exporter-otlp>=0.40b0",
-    "opentelemetry-propagator-aws-xray~=1.0",
+    "python-dotenv",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "pydantic-settings",
+    "boto3",
+    "aws-xray-sdk",
+    "mangum",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-requests",
+    "opentelemetry-instrumentation-botocore",
+    "opentelemetry-sdk-extension-aws",
+    "opentelemetry-exporter-otlp",
 ]
 
 [project.optional-dependencies]
-jaeger = ["opentelemetry-exporter-jaeger>=0.40b0"]
-prometheus = ["prometheus-client>=0.17.0", "opentelemetry-exporter-prometheus>=0.40b0"]
-sqlalchemy = ["opentelemetry-instrumentation-sqlalchemy>=0.40b0"]
-redis = ["opentelemetry-instrumentation-redis>=0.40b0"]
-mysql = ["opentelemetry-instrumentation-pymysql>=0.40b0"]
+sqlalchemy = ["opentelemetry-instrumentation-sqlalchemy"]
+redis = ["opentelemetry-instrumentation-redis"]
+mysql = ["opentelemetry-instrumentation-pymysql"]
 all-instrumentation = [
-    "opentelemetry-instrumentation-sqlalchemy>=0.40b0",
-    "opentelemetry-instrumentation-redis>=0.40b0",
-    "opentelemetry-instrumentation-pymysql>=0.40b0",
-]
-all-exporters = [
-    "opentelemetry-exporter-jaeger>=0.40b0",
-    "prometheus-client>=0.17.0",
-    "opentelemetry-exporter-prometheus>=0.40b0",
-]
-all = [
-    "opentelemetry-exporter-jaeger>=0.40b0",
-    "prometheus-client>=0.17.0",
-    "opentelemetry-exporter-prometheus>=0.40b0",
-    "opentelemetry-instrumentation-sqlalchemy>=0.40b0",
-    "opentelemetry-instrumentation-redis>=0.40b0",
-    "opentelemetry-instrumentation-pymysql>=0.40b0",
+    "opentelemetry-instrumentation-sqlalchemy",
+    "opentelemetry-instrumentation-redis",
+    "opentelemetry-instrumentation-pymysql",
 ]
 
 [project.urls]
@@ -64,12 +49,12 @@ build-backend = "poetry.core.masonry.api"
 
 ### -------- Development Dependencies --------
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.11.12"
-codespell = "^2.4.1"
-poethepoet = "^0.34.0"
-pytest = "^7.4.0"
-httpx = "^0.25.0"
-pytest-cov = "^4.1.0"
+ruff = "*"
+codespell = "*"
+poethepoet = "*"
+pytest = "*"
+httpx = "*"
+pytest-cov = "*"
 
 [tool.poetry.requires-plugins]
 poethepoet = { version = "~0.34.0", extras = ["poetry_plugin"]}

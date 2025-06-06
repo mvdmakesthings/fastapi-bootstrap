@@ -1,6 +1,14 @@
-from fastapi import APIRouter, HTTPException
 import time
-from fastapi_bootstrap.utils.telemetry import traced, add_span_attributes, get_tracer, timed_span
+
+from fastapi import APIRouter, HTTPException
+from opentelemetry import trace
+
+from fastapi_bootstrap.utils.telemetry import (
+    add_span_attributes,
+    get_tracer,
+    timed_span,
+    traced,
+)
 
 router = APIRouter(tags=["v1"])
 
@@ -20,10 +28,9 @@ async def traced_example():
     Example endpoint showing custom OpenTelemetry tracing
     """
     # Add custom attributes to the current span
-    add_span_attributes({
-        "custom.attribute": "example-value",
-        "request.type": "internal"
-    })
+    add_span_attributes(
+        {"custom.attribute": "example-value", "request.type": "internal"}
+    )
 
     # Get a tracer for a specific component
     tracer = get_tracer("api.example")
@@ -44,7 +51,7 @@ async def traced_example():
 
     return {
         "message": "Traced example request processed successfully",
-        "trace_id": tracer.get_current_span().get_span_context().trace_id,
+        "trace_id": trace.get_current_span().get_span_context().trace_id,
     }
 
 
@@ -99,5 +106,5 @@ async def timed_example():
 
     return {
         "message": "Timed operation completed",
-        "time_attributes": "Check the 'execution_time_ms' attribute in the spans"
+        "time_attributes": "Check the 'execution_time_ms' attribute in the spans",
     }
