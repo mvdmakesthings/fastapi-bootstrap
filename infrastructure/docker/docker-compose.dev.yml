@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.dev
+    volumes:
+      - ../../src:/app/src:delegated
+      - ../../tests:/app/tests:delegated
+      - ${HOME}/.aws:/root/.aws:ro  # Mount AWS credentials for direct AWS access
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8000
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/app
+      # Set AWS SDK endpoint URL to real AWS services
+      - AWS_ENDPOINT_URL_SSM=
+      - AWS_ENDPOINT_URL_S3=
+      - AWS_ENDPOINT_URL_DYNAMODB=
+      - AWS_ENDPOINT_URL_KMS=
+      - AWS_ENDPOINT_URL_SECRETSMANAGER=
+    command: uvicorn fastapi_bootstrap.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
