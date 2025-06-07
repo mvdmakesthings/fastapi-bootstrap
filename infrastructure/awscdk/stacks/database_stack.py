@@ -12,7 +12,7 @@ from aws_cdk import aws_rds as rds
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
-from fastapi_bootstrap.infrastructure.constants import (
+from infrastructure.awscdk.constants import (
     SSM_PATHS,
     Environment,
     get_removal_policy,

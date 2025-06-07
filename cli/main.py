@@ -4,12 +4,12 @@ Main CLI entry point for the FastAPI Bootstrap CLI.
 
 import click
 
-from fastapi_bootstrap.cli.commands.deploy import deploy_cmd
-from fastapi_bootstrap.cli.commands.dev import dev_cmd
-from fastapi_bootstrap.cli.commands.infra import infra_cmd
+from cli.commands.deploy import deploy_cmd
+from cli.commands.dev import dev_cmd
+from cli.commands.infra import infra_cmd
 
 # Import command groups
-from fastapi_bootstrap.cli.commands.init import init_cmd
+from cli.commands.init import init_cmd
 
 
 @click.group()

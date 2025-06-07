@@ -173,6 +173,6 @@ def custom_command(param):
     click.echo(f"Custom command with param: {param}")
 
 # In main.py
-from fastapi_bootstrap.cli.commands.custom import custom_command
+from cli.commands.custom import custom_command
 cli.add_command(custom_command)
 ```

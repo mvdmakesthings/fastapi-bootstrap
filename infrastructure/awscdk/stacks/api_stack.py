@@ -21,7 +21,7 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
-from fastapi_bootstrap.infrastructure.constants import (
+from infrastructure.awscdk.constants import (
     DEFAULT_VPC_CONFIG,
     ECS_CONFIG,
     Environment,

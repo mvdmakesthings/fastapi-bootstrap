@@ -6,10 +6,10 @@ import os
 
 from aws_cdk import App, Environment, Tags
 
-from fastapi_bootstrap.infrastructure.constants import DEFAULT_TAGS
-from fastapi_bootstrap.infrastructure.stacks.api_stack import ApiStack
-from fastapi_bootstrap.infrastructure.stacks.database_stack import DatabaseStack
-from fastapi_bootstrap.infrastructure.stacks.monitoring_stack import MonitoringStack
+from infrastructure.awscdk.constants import DEFAULT_TAGS
+from infrastructure.awscdk.stacks.api_stack import ApiStack
+from infrastructure.awscdk.stacks.database_stack import DatabaseStack
+from infrastructure.awscdk.stacks.monitoring_stack import MonitoringStack
 
 
 def main():

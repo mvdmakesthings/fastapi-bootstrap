@@ -4,14 +4,14 @@ Project initialization commands.
 
 import click
 
-from fastapi_bootstrap.cli.utils.aws import (
+from cli.utils.aws import (
     create_dynamodb_table,
     create_s3_bucket,
     get_account_id,
     get_aws_session,
 )
-from fastapi_bootstrap.cli.utils.config import Config
-from fastapi_bootstrap.cli.utils.credentials import CredentialManager
+from cli.utils.config import Config
+from cli.utils.credentials import CredentialManager
 
 
 @click.group(name="init")

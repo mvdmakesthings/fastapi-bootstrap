@@ -7,22 +7,22 @@ from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
-from fastapi_bootstrap.cli.commands.deploy import deploy_application
-from fastapi_bootstrap.cli.commands.infra import (
+from cli.commands.deploy import deploy_application
+from cli.commands.infra import (
     bootstrap_aws_environment,
     deploy_infrastructure,
 )
-from fastapi_bootstrap.cli.commands.init import init_project
+from cli.commands.init import init_project
 
 
 class TestInitCommands:
     """Tests for the initialization commands."""
 
-    @patch("fastapi_bootstrap.cli.commands.init.get_aws_session")
-    @patch("fastapi_bootstrap.cli.commands.init.get_account_id")
-    @patch("fastapi_bootstrap.cli.commands.init.create_s3_bucket")
-    @patch("fastapi_bootstrap.cli.commands.init.create_dynamodb_table")
-    @patch("fastapi_bootstrap.cli.commands.init.Config")
+    @patch("cli.commands.init.get_aws_session")
+    @patch("cli.commands.init.get_account_id")
+    @patch("cli.commands.init.create_s3_bucket")
+    @patch("cli.commands.init.create_dynamodb_table")
+    @patch("cli.commands.init.Config")
     def test_init_project(
         self,
         mock_config,
@@ -108,7 +108,7 @@ class TestInitCommands:
 class TestInfraCommands:
     """Tests for the infrastructure commands."""
 
-    @patch("fastapi_bootstrap.cli.commands.infra.subprocess.run")
+    @patch("cli.commands.infra.subprocess.run")
     def test_bootstrap_aws_environment(self, mock_run):
         """Test the bootstrap AWS environment command."""
         # Set up mocks
@@ -136,8 +136,8 @@ class TestInfraCommands:
         assert os.environ.get("AWS_PROFILE") == "test-profile"
         assert os.environ.get("AWS_REGION") == "us-west-2"
 
-    @patch("fastapi_bootstrap.cli.commands.infra.Config")
-    @patch("fastapi_bootstrap.cli.commands.infra.subprocess.run")
+    @patch("cli.commands.infra.Config")
+    @patch("cli.commands.infra.subprocess.run")
     def test_deploy_infrastructure(self, mock_run, mock_config):
         """Test the deploy infrastructure command."""
         # Set up mocks
@@ -191,11 +191,11 @@ class TestInfraCommands:
 class TestDeployCommands:
     """Tests for the deployment commands."""
 
-    @patch("fastapi_bootstrap.cli.commands.deploy.Config")
-    @patch("fastapi_bootstrap.cli.commands.deploy.get_aws_session")
-    @patch("fastapi_bootstrap.cli.commands.deploy.get_ecr_repository_uri")
-    @patch("fastapi_bootstrap.cli.commands.deploy.subprocess.run")
-    @patch("fastapi_bootstrap.cli.commands.deploy.subprocess.check_output")
+    @patch("cli.commands.deploy.Config")
+    @patch("cli.commands.deploy.get_aws_session")
+    @patch("cli.commands.deploy.get_ecr_repository_uri")
+    @patch("cli.commands.deploy.subprocess.run")
+    @patch("cli.commands.deploy.subprocess.check_output")
     def test_deploy_application(
         self,
         mock_check_output,

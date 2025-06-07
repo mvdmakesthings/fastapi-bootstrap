@@ -8,8 +8,8 @@ import sys
 
 import click
 
-from fastapi_bootstrap.cli.utils.aws import get_aws_session, get_ecr_repository_uri
-from fastapi_bootstrap.cli.utils.config import Config
+from cli.utils.aws import get_aws_session, get_ecr_repository_uri
+from cli.utils.config import Config
 
 
 @click.group(name="deploy")

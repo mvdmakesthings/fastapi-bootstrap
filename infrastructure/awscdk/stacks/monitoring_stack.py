@@ -14,7 +14,7 @@ from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_sns as sns
 from constructs import Construct
 
-from fastapi_bootstrap.infrastructure.constants import Environment
+from infrastructure.awscdk.constants import Environment
 
 
 class MonitoringStack(Stack):

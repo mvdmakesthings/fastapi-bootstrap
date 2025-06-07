@@ -8,7 +8,7 @@ import sys
 
 import click
 
-from fastapi_bootstrap.cli.utils.config import Config
+from cli.utils.config import Config
 
 
 @click.group(name="infra")

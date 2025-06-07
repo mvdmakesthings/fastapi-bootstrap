@@ -50,7 +50,9 @@ repository = "https://github.com/mvdmakesthings/fastapi-bootstrap"
 
 [tool.poetry]
 version = "0.1.0"
-packages = [{ include = "fastapi_bootstrap", from = "src" }]
+packages = [
+    { include = "fastapi_bootstrap", from = "src" }
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
